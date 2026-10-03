@@ -126,6 +126,25 @@ def write_env_value(path: str, key: str, value: str) -> None:
     os.replace(tmp, p)
 
 
+TOKEN_PREFIX = {"CLAUDE_CODE_OAUTH_TOKEN": "sk-ant-oat", "TYPESAFE_API_KEY": "apikey_"}
+
+
+def clean_token(raw: str) -> str:
+    """Tokens nunca têm espaços: remove os que o terminal do celular mete ao copiar linhas quebradas."""
+    return "".join(raw.split())
+
+
+def token_problem(key: str, value: str) -> str | None:
+    prefix = TOKEN_PREFIX.get(key)
+    if prefix and not value.startswith(prefix):
+        return f"{key} devia começar por {prefix}…; confira se copiou o token inteiro"
+    if key == "CLAUDE_CODE_OAUTH_TOKEN" and len(value) < 60:
+        return "o token parece curto demais; confira se copiou o token inteiro"
+    if key == "TELEGRAM_BOT_TOKEN" and ":" not in value:
+        return "o token do Telegram tem o formato 123456:ABC…"
+    return None
+
+
 @secrets_app.command("set")
 def secrets_set(key: str, file: str = typer.Option(SECRETS_FILE, help="Ficheiro de segredos")) -> None:
     """Grava uma variável no secrets.env sem eco. Ex.: talos secrets set CLAUDE_CODE_OAUTH_TOKEN"""
@@ -139,12 +158,15 @@ def secrets_set(key: str, file: str = typer.Option(SECRETS_FILE, help="Ficheiro 
     if key in NOT_SECRET:
         value = input(f"Valor para {key}: ").strip()
     else:
-        value = getpass.getpass(f"Cole o valor de {key} (não aparece enquanto cola) e Enter: ").strip()
-        if getpass.getpass("Cole de novo para confirmar: ").strip() != value:
+        value = clean_token(getpass.getpass(f"Cole o valor de {key} (não aparece enquanto cola) e Enter: "))
+        if clean_token(getpass.getpass("Cole de novo para confirmar: ")) != value:
             typer.echo("Os valores não coincidem. Nada foi gravado.")
             raise typer.Exit(1)
     if not value:
         typer.echo("Valor vazio. Nada foi gravado.")
+        raise typer.Exit(1)
+    if problem := token_problem(key, value):
+        typer.echo(f"⚠️ {problem}. Nada foi gravado.")
         raise typer.Exit(1)
     write_env_value(file, key, value)
     shown = value if key in NOT_SECRET else f"{len(value)} caracteres"

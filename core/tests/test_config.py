@@ -77,3 +77,15 @@ def test_secrets_set_refuses_api_key(tmp_path):
 
     r = CliRunner().invoke(app, ["secrets", "set", "ANTHROPIC_API_KEY", "--file", str(tmp_path / "s.env")])
     assert r.exit_code == 1 and "proibida" in r.output
+
+
+def test_token_cleanup_and_validation():
+    from talos.cli import clean_token, token_problem
+
+    broken = "sk-ant-oat01-AAAAbbbbCCCCddddEEEE ffffGGGGhhhhIIIIjjjjKKKKllllMMMMnnnnOOOOppppQQQQ\nrrrr"
+    fixed = clean_token(broken)
+    assert " " not in fixed and "\n" not in fixed and fixed.startswith("sk-ant-oat01-")
+    assert token_problem("CLAUDE_CODE_OAUTH_TOKEN", fixed) is None
+    assert token_problem("CLAUDE_CODE_OAUTH_TOKEN", "ckSrsEpfg") is not None  # só a cauda do token
+    assert token_problem("TYPESAFE_API_KEY", "apikey_123") is None
+    assert token_problem("TELEGRAM_BOT_TOKEN", "abc") is not None
