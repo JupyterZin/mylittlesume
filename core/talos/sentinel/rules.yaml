@@ -1,0 +1,107 @@
+# Regras determinísticas da Sentinela (SPEC §7.3). A primeira regra que casar decide.
+# Decisões: allow | ask | deny | takeover
+# Campos de match (todos opcionais, todos têm de casar):
+#   tool, tool_prefix, tool_in       → nome da ferramenta
+#   element_missing: true            → ferramenta de elemento sem descrição humana (`element`)
+#   target_unknown: true             → ref (e12) que não aparece no último snapshot ARIA visto
+#   element_regex                    → descrição do elemento / nome do campo / texto REAL do ref no snapshot
+#   field_regex                      → nomes dos campos (browser_fill_form.fields[].name, element, target)
+#   domain_in: blocklist | [..]      → domínio da URL do input
+#   input_flag: {chave: valor}       → ex.: {submit: true}
+#   key_regex                        → browser_press_key.key
+#   path_outside_workspace: true     → Read/Write/Edit/Glob/Grep fora do workspace
+# Nomes das ferramentas do Playwright MCP confirmados no pacote @playwright/mcp 0.0.83.
+
+default: ask
+
+lists:
+  blocklist: []          # domínios proibidos (ex.: casinos, encurtadores); edite à vontade
+
+rules:
+  # --- ferramentas do próprio Talos ---
+  - id: propose-always
+    match: { tool: "mcp__talos__propose_action" }
+    decision: allow
+    reason: "propor é sempre permitido; executar é que exige aprovação"
+  - id: vault-fill-ask
+    match: { tool: "mcp__talos__vault_fill" }
+    decision: ask
+    reason: "dados pessoais no navegador só com aprovação"
+  - id: talos-tools
+    match: { tool_prefix: "mcp__talos__" }
+    decision: allow
+
+  # --- nunca ---
+  - id: no-bash
+    match: { tool_in: ["Bash", "BashOutput", "KillShell", "KillBash", "NotebookEdit"] }
+    decision: deny
+    reason: "shell e notebooks estão fora da allowlist"
+  - id: no-code-in-page
+    match: { tool_in: ["mcp__playwright__browser_evaluate", "mcp__playwright__browser_run_code_unsafe"] }
+    decision: deny
+    reason: "executar JavaScript na página contorna a Sentinela"
+
+  # --- ficheiros: só dentro do workspace ---
+  - id: files-outside-workspace
+    match: { tool_in: ["Read", "Write", "Edit", "Glob", "Grep"], path_outside_workspace: true }
+    decision: deny
+    reason: "acesso a ficheiros só dentro de /srv/talos/workspace"
+  - id: files-in-workspace
+    match: { tool_in: ["Read", "Write", "Edit", "Glob", "Grep"] }
+    decision: allow
+
+  # --- web do Claude Code (egress verificado depois) ---
+  - id: web
+    match: { tool_in: ["WebSearch", "WebFetch"] }
+    decision: allow
+  - id: skills-and-subagents
+    match: { tool_in: ["Skill", "Task", "Agent", "TodoWrite"] }
+    decision: allow
+
+  # --- navegador ---
+  - id: browser-blocklist
+    match: { tool_in: ["mcp__playwright__browser_navigate", "mcp__playwright__browser_tabs"], domain_in: blocklist }
+    decision: deny
+    reason: "domínio na blocklist"
+  - id: browser-secret-fields
+    match:
+      tool_in: ["mcp__playwright__browser_type", "mcp__playwright__browser_fill_form", "mcp__playwright__browser_select_option"]
+      field_regex: "(senha|password|passwd|passe|pin\\b|cvv|cvc|cart[aã]o|card|iban|c[oó]digo|code|otp|2fa|token|mb ?way)"
+    decision: takeover
+    reason: "campo de senha, código ou cartão: só o Lucas digita (takeover)"
+  - id: browser-no-description
+    match:
+      tool_in: ["mcp__playwright__browser_click", "mcp__playwright__browser_type", "mcp__playwright__browser_fill_form",
+                "mcp__playwright__browser_select_option", "mcp__playwright__browser_drag", "mcp__playwright__browser_drop"]
+      element_missing: true
+    decision: ask
+    reason: "ação no navegador sem descrição do elemento: não dá para avaliar"
+  - id: browser-unknown-element
+    match:
+      tool_in: ["mcp__playwright__browser_click", "mcp__playwright__browser_type", "mcp__playwright__browser_fill_form",
+                "mcp__playwright__browser_select_option", "mcp__playwright__browser_drag", "mcp__playwright__browser_drop"]
+      target_unknown: true
+    decision: ask
+    reason: "elemento fora do último snapshot: não dá para confirmar o que é"
+  - id: browser-final-click
+    match:
+      tool: "mcp__playwright__browser_click"
+      element_regex: "(pagar|comprar|finalizar|confirmar|encomendar|reservar|subscrever|aderir|enviar|submeter|concluir|aceitar|assinar|submit|send|pay|buy|order|book|confirm|checkout|purchase|place order|sign up|accept)"
+    decision: ask
+    reason: "clique final (submeter, pagar, reservar, confirmar)"
+  - id: browser-type-submit
+    match: { tool: "mcp__playwright__browser_type", input_flag: { submit: true } }
+    decision: ask
+    reason: "digitar com Enter pode submeter o formulário"
+  - id: browser-enter
+    match: { tool: "mcp__playwright__browser_press_key", key_regex: "^(enter|return)$" }
+    decision: ask
+    reason: "Enter pode submeter o formulário"
+  - id: browser-upload
+    match: { tool: "mcp__playwright__browser_file_upload" }
+    decision: ask
+    reason: "enviar ficheiro para um site"
+  - id: browser-other
+    match: { tool_prefix: "mcp__playwright__browser_" }
+    decision: allow
+    reason: "navegar, ler, rolar, preencher campos não sensíveis"
