@@ -51,7 +51,7 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 ### F4 · Navegador real (agente em paralelo, ADR-020)
 - ✅ `CDPBrowser` (Playwright Python via CDP), `vault_fill` por rótulo/placeholder/CSS, screenshot e URL no cartão, formulário de teste (`infra/testpages/`), regras ajustadas ao formato REAL do MCP 0.0.83.
 - ✅ [offline, com Chromium + MCP reais] formulário até antes de submeter → cartão com screenshot → submissão só depois da aprovação; senha/cartão → takeover; cliques disfarçados apanhados pelo texto real.
-- ✅ [servidor] formulário preenchido e submetido com aprovação na VPS. ⏳ takeover de senha/cartão e assumir/devolver pelo celular.
+- ✅ [servidor] formulário preenchido e submetido com aprovação na VPS; senha/cartão → takeover; assumir/devolver a Tela pelo celular. **F4 concluída.**
 
 ### F5 · App PWA + mascote (agente em paralelo, ADR-021)
 - ✅ 6 páginas (Conversa, Tarefas, Aprovações, Agenda, Tela, Ajustes), mascote 3D RobotExpressive em bronze com os 15 estados, `prefers-reduced-motion`, fallback 2D, PIN, ditado por voz; API e WS tipado; 41 testes Python + 28 vitest; `npm run build` sem erros.
@@ -69,7 +69,8 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ **F3 no servidor**: resposta manual na thread → 📬 com resumo (Jev) → o Talos retomou o assunto, leu a thread, consultou a agenda e respondeu no Telegram. Bugs reais encontrados e corrigidos: rascunhos intermédios (404) bloqueavam o histórico do Gmail; `httplib2` partilhado entre threads (SSL); eventos sem tarefa morriam em silêncio (agora voltam à conversa principal).
 - ✅ Web Push (notificações do próprio app) e WebSocket com sinal de vida — [offline] 238 testes Python + 42 vitest; ✅ **no celular do Lucas** (Android/Chrome): mensagens aparecem no app e as notificações do app chegam.
 - ✅ **F4 no servidor — formulário real**: pedido pela conversa → tarefa abre a página → **um** cartão "Aprovar e partilhar" (`vault_fill` com 4 campos) → campos preenchidos na Tela → "agora submete" chega à tarefa (`task_continue`) → cartão "Aprovar e submeter" → mensagem de sucesso. Corrigido pelo caminho: a conversa principal não tem navegador e agora encaminha para a tarefa; o Talos não recarrega páginas já preenchidas nem mostra caminhos do servidor.
-- ⏳ Senha/cartão → takeover; assumir/devolver a Tela pelo celular; instalação como PWA.
+- ✅ **Takeover no servidor**: pedido de senha e cartão → o Talos não digita → 🖐️ "Preciso que você assuma a Tela" → o Lucas assumiu a Tela pelo celular, digitou valores falsos e devolveu ao Talos.
+- ⏳ Instalação como PWA.
 
 ### Próximas
 - ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
