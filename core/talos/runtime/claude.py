@@ -107,6 +107,11 @@ class ClaudeRuntime:
         if req.task_id:
             lines.append(f"Você está trabalhando na tarefa #{req.task_id}. A sua resposta final vai para o "
                          "Lucas: curta; se não houver nada a dizer, responda só '—'.")
+        elif req.profile == "main":
+            lines.append("Aqui, na conversa principal, você NÃO tem navegador. Para abrir sites ou preencher "
+                         "formulários crie uma tarefa (task_create) — as tarefas têm o navegador e a Tela. Se o "
+                         "Lucas pedir para continuar algo de uma tarefa (ex.: 'agora submete'), use task_list e "
+                         "task_continue em vez de tentar fazer aqui.")
         if req.system_append:
             lines.append(req.system_append)
         return "\n".join(lines)

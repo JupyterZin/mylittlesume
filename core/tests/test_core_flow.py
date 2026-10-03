@@ -113,3 +113,26 @@ async def test_takeover_blocks_agent_and_resumes_tasks(h):
     prompts = [r.prompt for r in h.rt.requests]
     assert any("devolveu o controle da Tela" in p for p in prompts)
     assert any("Lucas: olá" in p for p in prompts)
+
+
+async def test_main_conversation_forwards_followup_to_task(h):
+    """'agora submete' na conversa principal (sem navegador) tem de chegar à tarefa que preencheu o formulário."""
+    t = h.app.tasks.create("Preencher formulário de teste", "abrir e preencher sem submeter")
+    h.app.tasks.update(t.id, status="done", session_id="sess-tarefa")
+
+    async def main(agent):
+        lst = await agent.call("mcp__talos__task_list", {})
+        assert f"#{t.id}" in lst
+        return await agent.call("mcp__talos__task_continue", {"task_id": t.id, "instruction": "agora submete"})
+
+    seen = []
+
+    async def task_run(agent):
+        seen.append(agent.req)
+        return "—"
+
+    h.rt.on(lambda r: r.profile == "main", main)
+    h.rt.on(lambda r: r.task_id == t.id, task_run)
+    await h.say("agora submete")
+    await h.drain()
+    assert seen and seen[0].resume_session_id == "sess-tarefa" and "agora submete" in seen[0].prompt

@@ -261,6 +261,29 @@ async def task_create(ctx: ToolContext, a: dict[str, Any]) -> Any:
     return f"Tarefa #{t.id} criada e em execução."
 
 
+@talos_tool("task_list", "Lista as tarefas abertas e as mais recentes (id, título, estado), para saber a que "
+            "tarefa um pedido do Lucas se refere.", {})
+async def task_list(ctx: ToolContext, a: dict[str, Any]) -> Any:
+    rows = ctx.app.tasks.list(limit=15)
+    return "\n".join(f"#{t.id} · {t.title} · {t.status}" for t in rows) or "Nenhuma tarefa."
+
+
+@talos_tool("task_continue", "Passa um pedido do Lucas a uma tarefa existente, que retoma com o contexto dela e "
+            "com navegador (ex.: o Lucas diz 'agora submete' sobre o formulário que a tarefa #3 preencheu). "
+            "Use sempre que o pedido continua algo que uma tarefa estava a fazer.",
+            {"task_id": INT, "instruction": S}, ["task_id", "instruction"], profiles=("main",))
+async def task_continue(ctx: ToolContext, a: dict[str, Any]) -> Any:
+    t = ctx.app.tasks.get(int(a["task_id"]))
+    if t is None:
+        raise ToolError(f"tarefa #{a['task_id']} não existe (veja task_list)")
+    if t.status == "cancelled":
+        raise ToolError(f"a tarefa #{t.id} foi cancelada; crie uma nova com task_create")
+    ctx.app.tasks.update(t.id, status="running")
+    ctx.app.queue.enqueue("agent.task_run", {"event": f"O Lucas pediu (pela conversa): {a['instruction']}"},
+                          task_id=t.id)
+    return f"Tarefa #{t.id} retomada com o pedido; ela reporta aqui."
+
+
 @talos_tool("task_update", "Atualiza estado/resumo de uma tarefa (por omissão, a atual). Ao terminar: "
             "status=done e summary com o que foi feito, o que falta e quem espera quem.",
             {"task_id": INT, "status": {"type": "string", "enum": ["running", "waiting_approval", "waiting_external",
