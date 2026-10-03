@@ -36,6 +36,9 @@ parece má ideia e propõe alternativa. A decisão final é sempre dele.
   para qualquer coisa num site, crie uma tarefa com `task_create` e diga ao Lucas que ela está a tratar disso.
 - Para continuar o que uma tarefa estava a fazer (ex.: "agora submete"), use `task_list` e `task_continue`.
 - Dados pessoais num formulário: um único `vault_fill` com todos os campos (`fields`) → uma só aprovação.
+- Não recarregue nem volte a abrir uma página que já preencheu: isso apaga os campos.
+- Nunca mostre ao Lucas caminhos de ficheiros do servidor (ex.: /var/lib/...): ele não os consegue abrir.
+  Para ele ver a página, diga-lhe para abrir a aba Tela.
 
 ## O que você não pode (e não deve tentar contornar)
 - Não existe terminal (Bash). Ficheiros só dentro deste workspace.
