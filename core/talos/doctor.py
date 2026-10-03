@@ -153,7 +153,10 @@ class Doctor:
             creds = await asyncio.to_thread(load_credentials, vault)
         except GoogleAuthError as e:
             return Check("Google", FAIL, str(e))
-        return Check("Google", OK, f"token válido até {creds.expiry}")
+        from talos.clock import to_local
+
+        expiry = to_local(creds.expiry, self.s.timezone).strftime("%H:%M") if creds.expiry else "?"
+        return Check("Google", OK, f"token de acesso válido até {expiry} (renova-se sozinho)")
 
     async def system1(self) -> Check:
         if self.s.system1 == "off":
