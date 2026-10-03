@@ -181,7 +181,11 @@ export const useStore = create<Store>((set, get) => ({
 
   refreshApprovals: async () => {
     try {
-      set({ approvals: await api.approvals() })
+      const approvals = await api.approvals()
+      set({ approvals })
+      // cartões decididos enquanto o app estava fechado (ex.: no Telegram): a notificação já não serve
+      const decided = new Set(approvals.filter((a) => a.status !== 'pending').map((a) => `ap-${a.id}`))
+      if (decided.size) void closeNotifications((n) => decided.has(n.tag))
     } catch (e) {
       handleAuthError(e, set)
     }
