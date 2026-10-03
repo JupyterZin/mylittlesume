@@ -305,7 +305,7 @@ async def test_vault_fill_approved_fills_the_real_field(h: Any, cdp: CDPBrowser,
 
     await asyncio.gather(h.drain(), _lucas(h, ["a"], before_approval))
     assert await driver.input_value("#nif") == NIF
-    assert out["r"] == "Campo rótulo 'NIF' preenchido com dados.nif."
+    assert out["r"] == "Preenchidos: rótulo 'NIF' ← dados.nif"
     (a,) = _actions(h)
     assert a.status == "executed"
     assert "NIF" in h.tg.cards()[-1]["text"]

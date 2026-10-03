@@ -236,3 +236,44 @@ async def test_fast_approval_while_card_is_being_sent_counts_once(h, monkeypatch
     assert h.app.queue.counts().get("queued", 0) == 0  # nenhuma retomada extra da tarefa
     assert h.sentinel._grants == {} or all(v == 0 for v in h.sentinel._grants.values())
     _ = t
+
+
+async def test_vault_fill_many_fields_one_approval(h, tmp_settings):
+    """Formulário com nome, NIF e morada: UMA aprovação (o cartão lista os três dados), não três."""
+    import asyncio
+
+    from talos.connectors.browser import FakeBrowser
+
+    h.app.browser = FakeBrowser(tmp_settings.data_dir / "screens")
+    h.rt.pause_seconds = 5
+    res = {}
+
+    async def flow(agent):
+        res["fill"] = await agent.call("mcp__talos__vault_fill", {
+            "field_description": "Formulário de pedido em 127.0.0.1",
+            "fields": [{"selector": "Nome", "key": "dados.nome_completo"},
+                       {"selector": "NIF", "key": "dados.nif"},
+                       {"selector": "Morada", "key": "dados.morada"}]})
+        return "—"
+
+    h.rt.on(lambda r: r.task_id is not None, flow)
+    _task(h)
+
+    async def approve_soon():
+        for _ in range(200):
+            await asyncio.sleep(0.02)
+            pend = h.app.approvals.list_pending()
+            if pend:
+                await h.tap(f"ap:{pend[0].id}:a")
+                return
+
+    await asyncio.gather(h.drain(), approve_soon())
+    with h.app.db.session() as s:
+        actions = list(s.exec(select(PendingAction)))
+    assert len(actions) == 1 and actions[0].kind == "share_data"
+    assert set(actions[0].payload_json["_data_keys"]) == {"dados.nome_completo", "dados.nif", "dados.morada"}
+    card = h.tg.cards()[-1]["text"]
+    assert "Dados pessoais incluídos: morada, NIF, nome completo" in card
+    assert h.app.browser.filled == {"Nome": "Lucas Teste Silva", "NIF": "123456789",
+                                    "Morada": "Rua das Flores 12, 1200-195 Lisboa"}
+    assert "Preenchidos" in res["fill"] and "123456789" not in res["fill"]

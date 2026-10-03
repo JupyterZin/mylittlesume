@@ -66,8 +66,11 @@ class ToolGate:
         call = self._call(name, inp, None)
         kind = self._kind_for(name, inp, d)
         data_keys = sorted({h.key for h in d.egress_hits if h.key})
-        if name == "mcp__talos__vault_fill" and str(inp.get("key", "")).startswith("dados."):
-            data_keys = sorted(set(data_keys) | {inp["key"]})
+        if name == "mcp__talos__vault_fill":
+            from talos.tools.definitions import vault_fill_fields
+
+            data_keys = sorted(set(data_keys) | {f["key"] for f in vault_fill_fields(inp)
+                                                  if f["key"].startswith("dados.")})
         screenshot, page_url = None, ""
         if (name.startswith("mcp__playwright__") or name == "mcp__talos__vault_fill") and self.app.browser is not None:
             try:

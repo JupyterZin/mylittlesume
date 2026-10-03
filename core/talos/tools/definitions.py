@@ -407,31 +407,55 @@ async def vault_list_keys(ctx: ToolContext, a: dict[str, Any]) -> Any:
     return ("Chaves: " + ", ".join(keys)) if keys else "O cofre ainda não tem dados pessoais."
 
 
-@talos_tool("vault_fill", "Preenche um campo do navegador (na aba em que você está) com um valor do cofre "
-            "(ex.: dados.nif). Exige aprovação do Lucas; o valor nunca passa por você. `selector` = o RÓTULO "
-            "visível do campo (ex.: 'NIF'), o placeholder, ou um seletor CSS (ex.: '#nif'). Refs do snapshot "
+@talos_tool("vault_fill", "Preenche campos do navegador (na aba em que você está) com valores do cofre "
+            "(ex.: dados.nif). Exige UMA aprovação do Lucas por chamada — por isso preencha todos os campos de dados "
+            "pessoais do formulário numa só chamada, com `fields`. O valor nunca passa por você. `selector` = o "
+            "RÓTULO visível do campo (ex.: 'NIF'), o placeholder, ou um seletor CSS (ex.: '#nif'). Refs do snapshot "
             "(e12, f4e12) NÃO funcionam aqui. Campos de senha, cartão ou código são recusados (takeover).",
-            {"selector": {"type": "string", "description": "Rótulo visível do campo, placeholder ou seletor CSS"},
-             "key": {"type": "string", "description": "Chave do cofre, ex.: dados.nif (veja vault_list_keys)"},
-             "field_description": {"type": "string", "description": "Que campo é e em que site (vai no cartão)"}},
-            ["selector", "key", "field_description"], profiles=("task", "planner"))
+            {"fields": {"type": "array", "maxItems": 10, "description": "Campos a preencher (preferido)",
+                        "items": {"type": "object", "properties": {
+                            "selector": {"type": "string", "description": "Rótulo visível, placeholder ou CSS"},
+                            "key": {"type": "string", "description": "Chave do cofre, ex.: dados.nif"}},
+                            "required": ["selector", "key"]}},
+             "selector": {"type": "string", "description": "Um só campo: rótulo visível, placeholder ou seletor CSS"},
+             "key": {"type": "string", "description": "Um só campo: chave do cofre, ex.: dados.nif"},
+             "field_description": {"type": "string", "description": "Que formulário é e em que site (vai no cartão)"}},
+            ["field_description"], profiles=("task", "planner"))
 async def vault_fill(ctx: ToolContext, a: dict[str, Any]) -> Any:
     from talos.connectors.browser import BrowserError
 
-    if not a["key"].startswith("dados."):
-        raise ToolError("só dados pessoais (dados.*); segredos nunca são preenchidos pelo agente")
+    fields = vault_fill_fields(a)
+    if not fields:
+        raise ToolError("indique os campos: fields=[{selector, key}] (ou selector + key)")
+    for f in fields:
+        if not f["key"].startswith("dados."):
+            raise ToolError("só dados pessoais (dados.*); segredos nunca são preenchidos pelo agente")
+        if ctx.app.vault.get(f["key"]) is None:
+            raise ToolError(f"{f['key']} não existe no cofre")
     browser = _need(ctx.app.browser, "Navegador")
-    value = ctx.app.vault.get(a["key"])
-    if value is None:
-        raise ToolError(f"{a['key']} não existe no cofre")
-    await _check_same_site(ctx, browser, a["key"])
-    try:
-        where = await browser.fill(a["selector"], value)
-    except BrowserError as e:  # mensagem já sem o valor
-        raise ToolError(str(e)) from None
-    if ctx.task_id:
-        ctx.app.tasks.authorize_data(ctx.task_id, [a["key"]])
-    return f"Campo {where} preenchido com {a['key']}."
+    for f in fields:
+        await _check_same_site(ctx, browser, f["key"])
+    done, failed = [], []
+    for f in fields:
+        try:
+            where = await browser.fill(f["selector"], ctx.app.vault.get(f["key"]) or "")
+            done.append(f"{where} ← {f['key']}")
+        except BrowserError as e:  # mensagem já sem o valor
+            failed.append(f"{f['selector']} ({f['key']}): {e}")
+    if ctx.task_id and done:
+        ctx.app.tasks.authorize_data(ctx.task_id, [f["key"] for f in fields])
+    out = "Preenchidos: " + "; ".join(done) if done else "Nenhum campo preenchido."
+    if failed:
+        out += "\nFalharam: " + "; ".join(failed)
+    return out
+
+
+def vault_fill_fields(a: dict[str, Any]) -> list[dict[str, str]]:
+    fields = [{"selector": str(f.get("selector", "")), "key": str(f.get("key", ""))}
+              for f in (a.get("fields") or []) if isinstance(f, dict)]
+    if a.get("selector") and a.get("key"):
+        fields.append({"selector": str(a["selector"]), "key": str(a["key"])})
+    return [f for f in fields if f["selector"] and f["key"]]
 
 
 async def _check_same_site(ctx: ToolContext, browser: Any, key: str) -> None:
@@ -444,7 +468,7 @@ async def _check_same_site(ctx: ToolContext, browser: Any, key: str) -> None:
                                                        col(PendingAction.status).in_(("approved", "executed")))
                            .order_by(col(PendingAction.id).desc()).limit(5)))
     approved = next((r for r in rows if (r.payload_json or {}).get("tool") == "mcp__talos__vault_fill"
-                     and (r.payload_json.get("input") or {}).get("key") == key), None)
+                     and key in {f["key"] for f in vault_fill_fields(r.payload_json.get("input") or {})}), None)
     host = (approved.payload_json.get("_host") if approved else "") or ""
     if not host:
         return
