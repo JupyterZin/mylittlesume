@@ -1,0 +1,33 @@
+# segredos e dados de runtime — nunca no git
+.env
+*.env
+!.env.example
+secrets.env
+vault.key
+*.key
+google_client.json
+token*.json
+/var/
+/data/
+workspace/memoria/*
+!workspace/memoria/.gitkeep
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# node
+node_modules/
+app/dist/
+
+# sqlite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
