@@ -9,5 +9,7 @@ EnvironmentFile=-/etc/talos/backup.env
 ExecStart=/opt/talos/infra/scripts/backup.sh
 NoNewPrivileges=yes
 ProtectSystem=strict
+# /tmp privado e gravável (com ProtectSystem=strict o /tmp do sistema fica só-leitura e o mktemp falhava)
+PrivateTmp=yes
 ReadWritePaths=/var/lib/talos
 ReadOnlyPaths=/srv/talos/workspace
