@@ -228,3 +228,17 @@ class InboundLog(SQLModel, table=True):
     external_chat_id: str
     preview: str = ""
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class PushSubscription(SQLModel, table=True):
+    """Aparelho inscrito nas notificações Web Push do app (um por navegador/PWA instalado)."""
+
+    __tablename__ = "push_subscriptions"
+    id: int | None = Field(default=None, primary_key=True)
+    endpoint: str = Field(unique=True)  # URL do serviço de push (FCM no Android)
+    p256dh: str  # chave pública do navegador: o conteúdo vai cifrado ponta a ponta
+    auth: str
+    user_agent: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    last_ok_at: datetime | None = None
+    failures: int = 0  # falhas seguidas (zera a cada entrega)
