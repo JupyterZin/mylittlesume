@@ -5,7 +5,7 @@ import { navigate } from '../router'
 import { Icon } from '../components/Icon'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { PageHeader } from '../components/PageHeader'
-import { fmtDay, fmtRelative, fmtTime, plural, TASK_GROUPS, TASK_STATUS_LABEL, taskGroup } from '../lib/format'
+import { fmtDay, fmtRelative, fmtTime, parseDate, plural, TASK_GROUPS, TASK_STATUS_LABEL, taskGroup } from '../lib/format'
 import { describeEvent } from '../lib/events'
 import type { Task, TaskStatus } from '../types'
 
@@ -95,7 +95,15 @@ function TaskList() {
 
 function TaskDetail({ id }: { id: number }) {
   const task = useStore((s) => s.tasks.find((t) => t.id === id))
-  const events = useStore((s) => s.timelines[id])
+  const rawEvents = useStore((s) => s.timelines[id])
+  const events = useMemo(
+    () =>
+      rawEvents &&
+      [...rawEvents].sort(
+        (a, b) => (parseDate(a.created_at)?.getTime() ?? 0) - (parseDate(b.created_at)?.getTime() ?? 0) || (a.id ?? 0) - (b.id ?? 0),
+      ),
+    [rawEvents],
+  )
   const allApprovals = useStore((s) => s.approvals)
   const approvals = useMemo(
     () => allApprovals.filter((a) => a.task_id === id && a.status === 'pending'),

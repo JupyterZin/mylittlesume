@@ -335,6 +335,12 @@ code {
   background: var(--bronze);
   color: var(--on-bronze);
 }
+.btn-primary:disabled,
+.btn-danger:disabled {
+  background: var(--surface-2);
+  color: var(--text-2);
+  opacity: 1;
+}
 .btn-primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--bronze) 90%, #000);
 }
@@ -670,8 +676,8 @@ code {
 }
 .seal {
   position: absolute;
-  top: 10%;
-  left: calc(50% + 52px);
+  top: 46%;
+  left: calc(50% + 64px);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -687,8 +693,11 @@ code {
   animation: seal-pulse 2.2s ease-in-out infinite;
 }
 .stage[data-compact] .seal {
-  top: 4%;
-  left: calc(50% + 36px);
+  top: 40%;
+  left: calc(50% + 40px);
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
 }
 .seal[data-still] {
   animation: none;
@@ -966,12 +975,15 @@ code {
 .approval-why .label {
   font-weight: 640;
 }
+.approval-data > p:not(.warn-line) {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
 .chips {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-left: 8px;
-  vertical-align: middle;
 }
 .warn-line {
   display: flex;

@@ -57,6 +57,7 @@ export function MascotStage({ active, compact }: { active: boolean; compact: boo
   const reducedMotion = useReducedMotion()
   const [failed3d, setFailed3d] = useState(false)
   const [ready3d, setReady3d] = useState(false)
+  const [faded3d, setFaded3d] = useState(false)
 
   const base = paused ? 'paused' : mascot.state
   const state = displayState(base, reaction?.state ?? null, typing)
@@ -69,11 +70,19 @@ export function MascotStage({ active, compact }: { active: boolean; compact: boo
     [prefs.mascot, prefs.autoFellBack, failed3d, reducedMotion],
   )
 
-  // a reação dura o clipe (3D avisa no fim); por segurança há sempre um temporizador
+  // o pôster 2D só sai depois de o 3D terminar de aparecer (sem "piscar" escuro)
+  useEffect(() => {
+    if (!ready3d) return
+    const t = setTimeout(() => setFaded3d(true), 600)
+    return () => clearTimeout(t)
+  }, [ready3d])
+
+  // a reação dura o clipe: no 3D quem avisa é o fim do clipe (o temporizador é só uma rede de
+  // segurança, folgada para aparelhos lentos); no 2D é o temporizador
   useEffect(() => {
     if (!reaction) return
     const nonce = reaction.nonce
-    const ms = reactionMillis(spec) + (choice.mode === '3d' ? 1200 : 0)
+    const ms = choice.mode === '3d' ? reactionMillis(spec) * 2 + 1500 : reactionMillis(spec)
     const t = setTimeout(() => clearReaction(nonce), ms)
     return () => clearTimeout(t)
   }, [reaction, spec, choice.mode, clearReaction])
@@ -88,7 +97,7 @@ export function MascotStage({ active, compact }: { active: boolean; compact: boo
   return (
     <section className="stage" data-compact={compact ? 'true' : undefined} aria-label="Talos">
       <div className="stage-figure">
-        {(!show3d || !ready3d) && <Mascot2D pose={pose} />}
+        {(!show3d || !faded3d) && <Mascot2D pose={pose} />}
         {show3d && (
           <Fallback fallback={null} onError={() => setFailed3d(true)}>
             <Suspense fallback={null}>

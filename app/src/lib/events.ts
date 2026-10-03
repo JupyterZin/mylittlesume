@@ -13,7 +13,7 @@ export interface Described {
 
 const DECISION: Record<string, string> = {
   allow: 'permitiu',
-  ask: 'pediu aprovação',
+  ask: 'pediu aprovação para',
   deny: 'bloqueou',
   takeover: 'pediu que você assuma',
 }
@@ -32,11 +32,59 @@ const TRIAGE: Record<string, string> = {
   suspeito: 'suspeito',
 }
 
+const TOOL_LABEL: Record<string, string> = {
+  WebSearch: 'a pesquisa na web',
+  WebFetch: 'a leitura de uma página',
+  Read: 'a leitura de um arquivo',
+  Write: 'a escrita de um arquivo',
+  Edit: 'a edição de um arquivo',
+  Bash: 'o terminal',
+  memory_search: 'a busca na memória',
+  memory_note: 'uma nota na memória',
+  contacts_lookup: 'a busca de contatos',
+  contacts_save: 'o registro de um contato',
+  gmail_search: 'a busca no Gmail',
+  gmail_read_thread: 'a leitura de um email',
+  gmail_create_draft: 'um rascunho no Gmail',
+  gmail_update_draft: 'a edição do rascunho',
+  gmail_label: 'um rótulo no Gmail',
+  calendar_list: 'a agenda',
+  calendar_free_slots: 'os horários livres',
+  calendar_create_private: 'um evento privado',
+  drive_search: 'a busca no Drive',
+  drive_read: 'a leitura de um documento',
+  task_create: 'uma tarefa nova',
+  task_update: 'a atualização da tarefa',
+  task_note: 'uma nota na tarefa',
+  watch_create: 'um acompanhamento',
+  watch_cancel: 'o fim de um acompanhamento',
+  schedule_create: 'uma recorrência',
+  notify_user: 'um aviso para você',
+  propose_action: 'uma proposta de ação',
+  vault_list_keys: 'as chaves do cofre',
+  vault_fill: 'o preenchimento com dados do cofre',
+}
+
+const BROWSER_LABEL: Record<string, string> = {
+  navigate: 'abrir uma página',
+  navigate_back: 'voltar',
+  click: 'clicar',
+  type: 'digitar',
+  fill_form: 'preencher um formulário',
+  snapshot: 'ler a página',
+  take_screenshot: 'capturar a tela',
+  select_option: 'escolher uma opção',
+  press_key: 'apertar uma tecla',
+  wait_for: 'esperar a página',
+  tabs: 'trocar de aba',
+}
+
+/** Nome da ferramenta em pt-BR ("o navegador (clicar)", "a busca no Gmail"). */
 export function friendlyTool(tool: string): string {
-  return tool
-    .replace(/^mcp__playwright__browser_/, 'navegador · ')
-    .replace(/^mcp__talos__/, '')
-    .replace(/_/g, ' ')
+  const browser = tool.match(/^mcp__playwright__browser_(.+)$/)
+  if (browser) return `o navegador (${BROWSER_LABEL[browser[1]] ?? browser[1].replace(/_/g, ' ')})`
+  const name = tool.replace(/^mcp__talos__/, '')
+  return TOOL_LABEL[name] ?? name.replace(/^mcp__/, '').replace(/_/g, ' ')
 }
 
 function s(v: unknown): string {
@@ -65,7 +113,7 @@ export function describeEvent(type: string, p: Record<string, unknown>): Describ
       const d = s(p.decision)
       const tone: Tone = d === 'deny' || d === 'takeover' ? 'bad' : d === 'ask' ? 'warn' : 'neutral'
       return {
-        title: `Sentinela ${DECISION[d] ?? d}: ${friendlyTool(s(p.tool))}`,
+        title: `Sentinela ${DECISION[d] ?? d} ${friendlyTool(s(p.tool))}`,
         detail: s(p.reason) || undefined,
         tone,
       }

@@ -185,7 +185,7 @@ function Cofre() {
                 {list.map((k) => (
                   <li key={k.key} className="row">
                     <span className="row-main">
-                      <span className="row-title">{k.label}</span>
+                      <span className="row-title">{k.label.charAt(0).toUpperCase() + k.label.slice(1)}</span>
                       <span className="row-sub mono">{k.key}</span>
                     </span>
                     <button
@@ -284,7 +284,8 @@ function Uso({ usage }: { usage: Usage | null }) {
         </div>
         <p className="muted small">
           {t.turns} turnos · {(t.input_tokens + t.output_tokens).toLocaleString('pt-BR')} tokens · custo equivalente ~US${' '}
-          {t.cost_usd.toFixed(2)} (informativo; a assinatura não cobra por token)
+          {t.cost_usd.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (informativo; a
+          assinatura não cobra por token)
         </p>
         {usage.rate_limited_until && parseDate(usage.rate_limited_until)! > new Date() && (
           <p className="warn-line">
