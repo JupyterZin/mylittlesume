@@ -10,6 +10,10 @@ WebSocket `/ws` com eventos tipados:
 - `task_event`         → qualquer outro evento do bus (`kind` = tipo original);
 - `mascot_state`       → estado do mascote calculado no servidor (`channels/mascot.py`).
 Com PIN configurado, a primeira mensagem do cliente tem de ser `{"type": "auth", "pin": "…"}`.
+O cliente manda `{"type": "presence", "visible": bool}` ao abrir, ao mudar de visibilidade e a cada
+sinal de vida: o notifier só manda push de respostas quando nenhum app está visível.
+
+Web Push: `GET /api/push/key` (chave VAPID pública), `POST|DELETE /api/push/subscribe`, `POST /api/push/test`.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import asyncio
 import base64
 import contextlib
 import hmac
+import json
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -32,6 +37,7 @@ from sqlmodel import col, func, select
 from talos import __version__
 from talos.channels.cards import RISK, VERB, render
 from talos.channels.mascot import MascotContext, MascotMapper
+from talos.channels.push import PushError, PushSender, ping_message
 from talos.clock import as_utc, in_quiet_hours, local_date, local_to_utc, to_local, utcnow
 from talos.db.models import (
     Conversation,
@@ -86,6 +92,23 @@ class FactIn(BaseModel):
 
 class VaultValueIn(BaseModel):
     value: str = Field(min_length=1, max_length=4000)
+
+
+class PushKeysIn(BaseModel):
+    p256dh: str = Field(min_length=1, max_length=200)
+    auth: str = Field(min_length=1, max_length=100)
+
+
+class PushSubscriptionIn(BaseModel):
+    """`PushSubscription.toJSON()` do navegador (+ o endpoint antigo, se mudou)."""
+
+    endpoint: str = Field(min_length=1, max_length=2048)
+    keys: PushKeysIn
+    old_endpoint: str | None = Field(default=None, max_length=2048)
+
+
+class PushEndpointIn(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
 
 
 def default_static_dir() -> Path:
@@ -431,6 +454,11 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             {"id": "browser", "name": "Navegador", "ok": app.browser is not None, "detail": s.browser_cdp_endpoint},
             {"id": "monitor", "name": "Monitor do Gmail", "ok": bool(monitor), "detail": monitor or ""},
         ]
+        if app.notifier.push is not None:
+            n = app.notifier.push.count()
+            connectors.append({"id": "push", "name": "Notificações do app", "ok": n > 0 and app.notifier.via("app"),
+                               "detail": "desligadas em NOTIFY_CHANNELS" if not app.notifier.via("app")
+                               else f"{n} aparelho{'s' if n != 1 else ''}"})
         return {
             "agent_name": s.agent_name, "version": __version__, "timezone": s.timezone, "auth_mode": s.auth_mode,
             "quiet_hours": {"window": s.quiet_hours, "active": quiet_now(), "until": quiet_until()},
@@ -438,6 +466,50 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             "daily_run_soft_limit": s.run_limit, "connectors": connectors, "persona": persona,
             "approval_ttl_hours": s.approval_ttl_hours,
         }
+
+    # ------------------------------------------------------------ notificações push (Web Push)
+    def push_sender() -> PushSender:
+        if app.notifier.push is None:
+            raise HTTPException(503, "notificações push indisponíveis neste servidor")
+        return app.notifier.push
+
+    @api.get("/api/push/key")
+    def push_key(_: str = Depends(auth)) -> dict[str, Any]:
+        p = push_sender()
+        try:
+            key = p.public_key()
+        except RuntimeError as e:
+            raise HTTPException(500, str(e)) from e
+        return {"public_key": key, "enabled": app.notifier.via("app"), "subscriptions": p.count()}
+
+    @api.post("/api/push/subscribe")
+    def push_subscribe(body: PushSubscriptionIn, user_agent: str | None = Header(default=None),
+                       who: str = Depends(auth)) -> dict[str, Any]:
+        p = push_sender()
+        try:
+            created = p.subscribe(body.endpoint, body.keys.p256dh, body.keys.auth, user_agent=user_agent or "",
+                                  replaces=body.old_endpoint or "")
+        except PushError as e:
+            raise HTTPException(400, str(e)) from e
+        if created:
+            app.bus.emit("push_subscribed", {"by": f"app:{who}"})
+        return {"ok": True, "created": created, "subscriptions": p.count()}
+
+    @api.delete("/api/push/subscribe")
+    def push_unsubscribe(body: PushEndpointIn, who: str = Depends(auth)) -> dict[str, Any]:
+        p = push_sender()
+        removed = p.unsubscribe(body.endpoint)
+        if removed:
+            app.bus.emit("push_unsubscribed", {"by": f"app:{who}"})
+        return {"ok": True, "removed": removed, "subscriptions": p.count()}
+
+    @api.post("/api/push/test")
+    async def push_test(_: str = Depends(auth)) -> dict[str, Any]:
+        p = push_sender()
+        if p.count() == 0:
+            raise HTTPException(409, "Nenhum aparelho inscrito. Ligue as notificações primeiro.")
+        res = await p.send(ping_message())  # pedido explícito: ignora NOTIFY_CHANNELS e horas de silêncio
+        return {"ok": res.sent > 0, **res.as_dict()}
 
     # ------------------------------------------------------------ tempo real
     @api.websocket("/ws")
@@ -458,12 +530,17 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
                 return
         q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=500)
         clients[q] = asyncio.get_running_loop()
+        presence = app.notifier.presence
+        presence.update(q, True)  # acabou de abrir: está à frente do Lucas
 
         async def reader() -> None:
             while True:
                 msg = await sock.receive()
                 if msg.get("type") == "websocket.disconnect":
                     return
+                data = _json_or_none(msg.get("text"))
+                if isinstance(data, dict) and data.get("type") == "presence":
+                    presence.update(q, bool(data.get("visible")))
 
         read_task = asyncio.create_task(reader())
         try:
@@ -484,6 +561,7 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             pass
         finally:
             clients.pop(q, None)
+            presence.drop(q)
             read_task.cancel()
 
     # ------------------------------------------------------------ app estático (SPA)
@@ -513,6 +591,15 @@ def mount_spa(api: FastAPI, root: Path) -> None:
             if "." in path.rsplit("/", 1)[-1]:
                 raise HTTPException(404, "não encontrado")
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+def _json_or_none(text: str | None) -> Any:
+    if not text or len(text) > 4096:
+        return None
+    try:
+        return json.loads(text)
+    except ValueError:
+        return None
 
 
 def _offer(q: asyncio.Queue[dict[str, Any]], msg: dict[str, Any]) -> None:
