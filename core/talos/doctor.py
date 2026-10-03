@@ -43,7 +43,7 @@ class Doctor:
     async def run(self, extra: list[Probe] | None = None) -> list[Check]:
         probes: list[Probe] = [
             self.auth_env, self.secrets_perms, self.vault_key, self.disk, self.database,
-            self.monitor_tick, self.backups, self.pause_state,
+            self.monitor_tick, self.backups, self.pause_state, self.push_subscriptions,
         ]
         if self.live:
             probes += [self.claude_cli, self.telegram, self.google, self.browser, self.novnc, self.system1]
@@ -119,6 +119,30 @@ class Doctor:
             return Check("pausa", WARN, "sem banco")
         return Check("pausa", WARN if Control(self.db).is_paused() else OK,
                      "Talos PAUSADO (/retomar para voltar)" if Control(self.db).is_paused() else "ativo")
+
+    async def push_subscriptions(self) -> Check:
+        name = "notificações do app"
+        if "app" not in self.s.notify_channel_set:
+            return Check(name, OK, "desligadas (NOTIFY_CHANNELS sem app)")
+        if not self.db:
+            return Check(name, WARN, "sem banco")
+        from sqlmodel import select
+
+        from talos.db.models import PushSubscription
+
+        with self.db.session() as ss:
+            subs = list(ss.exec(select(PushSubscription)))
+        if not subs:
+            return Check(name, WARN, "nenhum aparelho inscrito (app → Ajustes → Notificações neste celular)")
+        oks = [as_utc(x.last_ok_at) for x in subs if x.last_ok_at]
+        failing = sum(1 for x in subs if x.failures)
+        detail = f"{len(subs)} aparelho{'s' if len(subs) != 1 else ''}"
+        if oks:
+            age_h = (utcnow() - max(oks)).total_seconds() / 3600
+            detail += f" · última entrega há {age_h:.0f} h"
+        if failing:
+            detail += f" · {failing} com falhas seguidas"
+        return Check(name, WARN if failing == len(subs) else OK, detail)
 
     async def claude_cli(self) -> Check:
         from talos.runtime.claude import probe_cli

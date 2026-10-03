@@ -8,6 +8,7 @@ from typing import Any
 from talos.approvals import Approvals
 from talos.channels.base import ChatChannel
 from talos.channels.notifier import Notifier
+from talos.channels.push import PushSender, WebPushSender
 from talos.config import Settings
 from talos.connectors.calendar import CalendarAPI
 from talos.connectors.drive import DriveAPI
@@ -50,7 +51,8 @@ class Services:
 def build_services(settings: Settings, db: Database, vault_key: bytes, *,
                    channels: dict[str, ChatChannel] | None = None, gmail: GmailAPI | None = None,
                    calendar: CalendarAPI | None = None, drive: DriveAPI | None = None,
-                   browser: Any = None, system1: System1 | None = None) -> Services:
+                   browser: Any = None, system1: System1 | None = None,
+                   push: PushSender | None = None) -> Services:
     bus = EventBus(db)
     queue = JobQueue(db)
     control = Control(db)
@@ -60,7 +62,9 @@ def build_services(settings: Settings, db: Database, vault_key: bytes, *,
     memory = MemoryService(db)
     contacts = ContactService(db)
     channels = channels or {}
-    notifier = Notifier(settings, db, queue, bus, channels, vault)
+    # Web Push do app (fica em notifier.push); a chave VAPID só é gerada no primeiro uso
+    push = push if push is not None else WebPushSender(settings, db, vault)
+    notifier = Notifier(settings, db, queue, bus, channels, vault, push=push)
     approvals = Approvals(settings=settings, db=db, bus=bus, queue=queue, tasks=tasks, contacts=contacts,
                           vault=vault, control=control, gmail=gmail, notifier=notifier)
     executor = Executor(settings=settings, db=db, bus=bus, queue=queue, vault=vault, approvals=approvals,

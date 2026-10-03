@@ -18,6 +18,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 FORBIDDEN_IN_SUBSCRIPTION = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+NOTIFY_CHANNELS = ("telegram", "app")
 
 
 class ForbiddenEnvError(RuntimeError):
@@ -66,6 +67,8 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     telegram_allowed_chat_id: str = ""
+    # onde chegam os avisos (notificações e cartões): telegram, app (Web Push do PWA) ou os dois
+    notify_channels: str = "telegram,app"
 
     gmail_address: str = ""
     agent_inbox_tag: str = "talos"
@@ -107,7 +110,20 @@ class Settings(BaseSettings):
             return v.lower() == "on"
         return v
 
+    @field_validator("notify_channels")
+    @classmethod
+    def _channels(cls, v: str) -> str:
+        names = [x.strip().lower() for x in v.split(",") if x.strip()]
+        unknown = sorted(set(names) - set(NOTIFY_CHANNELS))
+        if unknown or not names:
+            raise ValueError(f"NOTIFY_CHANNELS aceita {', '.join(NOTIFY_CHANNELS)} (recebido: {v!r})")
+        return ",".join(dict.fromkeys(names))
+
     # ---- derivados ----
+    @property
+    def notify_channel_set(self) -> frozenset[str]:
+        return frozenset(self.notify_channels.split(","))
+
     @property
     def run_limit(self) -> int:
         if self.daily_run_soft_limit:
