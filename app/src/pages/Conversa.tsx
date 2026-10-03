@@ -45,6 +45,9 @@ function Composer({ onFocusChange }: { onFocusChange: (focused: boolean) => void
   const ref = useRef<HTMLTextAreaElement>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const base = useRef('')
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // enviar e ditar não tiram o foco do campo: o teclado continua aberto, como num mensageiro
+  const keepFocus = (e: { preventDefault: () => void }) => e.preventDefault()
   const dict = useDictation((heard) => {
     setText(base.current ? `${base.current} ${heard}` : heard)
   })
@@ -98,9 +101,13 @@ function Composer({ onFocusChange }: { onFocusChange: (focused: boolean) => void
             submit()
           }
         }}
-        onFocus={() => onFocusChange(true)}
+        onFocus={() => {
+          clearTimeout(blurTimer.current)
+          onFocusChange(true)
+        }}
         onBlur={() => {
-          onFocusChange(false)
+          // adiado: o palco cresce e a barra volta; um toque em curso não pode "cair" noutro sítio
+          blurTimer.current = setTimeout(() => onFocusChange(false), 160)
           setTyping(false)
         }}
       />
@@ -108,6 +115,7 @@ function Composer({ onFocusChange }: { onFocusChange: (focused: boolean) => void
         <button
           type="button"
           className="icon-btn mic"
+          onMouseDown={keepFocus}
           aria-pressed={dict.listening}
           aria-label={dict.listening ? 'Parar o ditado' : 'Ditar mensagem'}
           onClick={() => {
@@ -121,7 +129,7 @@ function Composer({ onFocusChange }: { onFocusChange: (focused: boolean) => void
           <Icon name="mic" />
         </button>
       )}
-      <button type="submit" className="send" aria-label="Enviar" disabled={!text.trim()}>
+      <button type="submit" className="send" aria-label="Enviar" disabled={!text.trim()} onMouseDown={keepFocus}>
         <Icon name="enviar" />
       </button>
       {dict.error && (

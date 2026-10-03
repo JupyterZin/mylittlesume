@@ -68,6 +68,8 @@ export function ApprovalCard({ a, variant, highlight }: { a: Approval; variant: 
   }
 
   const risk = RISK_LABEL[a.risk] ?? a.risk
+  // a Conversa fica montada por baixo das outras páginas: ids distintos por variante
+  const domId = variant === 'full' ? `proposta-${a.id}` : `conversa-proposta-${a.id}`
   const novos = d.to.filter((r) => r.status === 'novo')
 
   return (
@@ -77,15 +79,15 @@ export function ApprovalCard({ a, variant, highlight }: { a: Approval; variant: 
       data-risk={a.risk}
       data-status={a.status}
       data-highlight={highlight ? 'true' : undefined}
-      id={`proposta-${a.id}`}
-      aria-labelledby={`proposta-${a.id}-titulo`}
+      id={domId}
+      aria-labelledby={`${domId}-titulo`}
     >
       <header className="approval-head">
         <p className="kicker">
           Proposta #{a.id}
           {d.task_title ? ` · ${d.task_title}` : a.task_id ? ` · tarefa #${a.task_id}` : ''}
         </p>
-        <h3 id={`proposta-${a.id}-titulo`} className="approval-title">
+        <h3 id={`${domId}-titulo`} className="approval-title">
           {action}
         </h3>
         <span className="chip" data-tone={a.risk === 'alto' ? 'bad' : a.risk === 'medio' ? 'warn' : 'neutral'}>
