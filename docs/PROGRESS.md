@@ -76,7 +76,12 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ `README.md` (visão geral, estado, mapa da documentação), `docs/GUIA.md` (manual de uso do Lucas), `docs/ARQUITETURA.md` (componentes, fluxos, dados, mapa do código), `docs/RUNBOOK.md` atualizado (atualizar o servidor, `talos secrets set`, cofre, Tela, problemas já vistos).
 - Testes no fecho do dia: 240 Python + 42 vitest, todos a passar.
 
+## Plano v2 (2026-10-03)
+- 📝 `docs/PLANO-V2.md`: pesquisa sobre Muse (Meta), dots (OpenAI) e Grok Bot (xAI), e roteiro F6a–F9. Prioridades do Lucas: **conversas por assunto** (não misturar temas nem estourar o contexto) e **fotos e documentos**.
+- 📝 `LEDGER.md` + `CLAUDE.md` na raiz: memória de trabalho do desenvolvimento, para não perder contexto entre sessões.
+
 ## Próxima sessão (por onde começar)
+> A ordem atualizada fica em `LEDGER.md` → "Próximas ações". A lista abaixo é a do fecho da F5.
 1. **Confirmar com o Lucas**: o briefing das 08:30 chegou? O app ficou instalado na tela inicial (passo 4)?
 2. **Verificações F3 no uso real**, sem testes artificiais, à medida que acontecerem:
    - uma auto-resposta → aviso silencioso;

@@ -12,7 +12,7 @@ Agente pessoal do Lucas, no estilo do Muse da Meta, com o **Claude como cérebro
 | F3 | Monitor do Gmail, follow-ups, inbox `+talos`, briefing, reflexão, organização semanal | ✅ resposta → aviso → continuação; ⏳ confirmar briefing, follow-up e `+talos` no uso real |
 | F4 | Navegador real + Tela + takeover | ✅ no servidor (preencher, submeter, assumir/devolver pelo celular) |
 | F5 | App PWA + mascote + notificações do app | ✅ no celular; ⏳ instalar como app e mostrar as poses no Telegram |
-| F6 | Objetivos com check-ins, `config/mcp.yaml` | ⬜ |
+| F6–F9 | **v2**: conversas por assunto, fotos e documentos, memória visível, objetivos, aprovações com escopo, voz, ensinar uma tarefa | 📝 planejado em [docs/PLANO-V2.md](docs/PLANO-V2.md) |
 | F7 | Endurecimento: teste de restauração, simulação de alertas | ⬜ |
 
 O detalhe de cada fase está em [docs/PROGRESS.md](docs/PROGRESS.md).
@@ -26,6 +26,8 @@ O detalhe de cada fase está em [docs/PROGRESS.md](docs/PROGRESS.md).
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Operação | Atualizar, logs, tokens, backups, restauração, problemas já vistos |
 | [docs/SECURITY.md](docs/SECURITY.md) | Segurança | Modelo de ameaças, fronteiras de confiança, limites conhecidos, revogação |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Técnico | Decisões de arquitetura (ADR-001 a 022) |
+| [docs/PLANO-V2.md](docs/PLANO-V2.md) | Todos | **Próximo passo**: pesquisa Muse / dots / Grok Bot e roteiro (assuntos separados, fotos, memória visível…) |
+| [LEDGER.md](LEDGER.md) | Desenvolvimento | Memória de trabalho: estado, próximas ações, factos do servidor, diário |
 | [docs/PLAN.md](docs/PLAN.md) | Histórico | Plano de construção por fases |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | Todos | O que foi feito e verificado, e o que falta |
 | [SPEC.md](SPEC.md) | Referência | Especificação original |
