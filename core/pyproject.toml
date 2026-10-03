@@ -22,6 +22,7 @@ dependencies = [
   "holidays>=0.105",
   "python-dateutil>=2.9",
   "typer>=0.27",
+  "playwright>=1.55",                # só a ligação CDP ao Chromium do talos-browser; sem download de navegador
 ]
 
 [project.scripts]
