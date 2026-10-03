@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useRoute } from './router'
+import { navigate, useRoute } from './router'
 import { useStore, onAssistantMessage } from './store'
 import { usePrefs } from './prefs'
 import { startLive } from './live'
 import { setTimeZone } from './lib/format'
 import { speak } from './lib/speech'
+import { closeNotifications, listenNotificationClicks, notificationKind, syncPush } from './lib/push'
 import { BottomNav } from './components/BottomNav'
 import { Toasts } from './components/Toasts'
 import { Forbidden, PinGate } from './components/PinGate'
@@ -44,6 +45,16 @@ export default function App() {
   useEffect(() => {
     if (tz) setTimeZone(tz)
   }, [tz])
+
+  // notificações: tocar numa com o app aberto navega até ao destino; inscrição ressincronizada ao entrar
+  useEffect(() => listenNotificationClicks((path) => navigate(path)), [])
+  useEffect(() => {
+    if (auth === 'ok') void syncPush()
+  }, [auth])
+  useEffect(() => {
+    // app à frente: os avisos e respostas já estão na conversa (os cartões só saem quando decididos)
+    if (visible) void closeNotifications((n) => ['notice', 'reply'].includes(notificationKind(n)))
+  }, [visible])
 
   useEffect(() => {
     const titles: Record<string, string> = {

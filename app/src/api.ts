@@ -5,6 +5,7 @@ import type {
   AppState,
   Approval,
   MemoryFact,
+  PushKey,
   SentinelRules,
   ServerMessage,
   SettingsView,
@@ -87,4 +88,10 @@ export const api = {
   usage: () => req<Usage>('GET', '/api/usage'),
   rules: () => req<SentinelRules>('GET', '/api/sentinel/rules'),
   settings: () => req<SettingsView>('GET', '/api/settings'),
+  pushKey: () => req<PushKey>('GET', '/api/push/key'),
+  pushSubscribe: (body: { endpoint: string; keys: { p256dh: string; auth: string }; old_endpoint?: string | null }) =>
+    req<{ ok: boolean; created: boolean; subscriptions: number }>('POST', '/api/push/subscribe', body),
+  pushUnsubscribe: (endpoint: string) =>
+    req<{ ok: boolean; removed: boolean; subscriptions: number }>('DELETE', '/api/push/subscribe', { endpoint }),
+  pushTest: () => req<{ ok: boolean; sent: number; failed: number; removed: number }>('POST', '/api/push/test'),
 }

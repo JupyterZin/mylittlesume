@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { api, ApiError } from './api'
 import { load, save } from './lib/storage'
 import { dayKey } from './lib/format'
+import { closeNotifications } from './lib/push'
 import type {
   AppState,
   Approval,
@@ -329,6 +330,11 @@ export const useStore = create<Store>((set, get) => ({
         debounce('tasks', () => void get().refreshTasks(), 400)
         debounce('state', () => void get().refreshState(), 300)
         appendTimeline(ev.task_id, ev.type, ev.payload, (ev as { id?: number }).id, (ev as { created_at?: string }).created_at)
+        if (ev.type === 'approval_decided') {
+          // decidida (aqui ou no Telegram): a notificação do cartão já não serve
+          const tag = `ap-${ev.payload.action_id}`
+          void closeNotifications((n) => n.tag === tag)
+        }
         return
       }
       case 'task_event': {

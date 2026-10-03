@@ -1,5 +1,5 @@
-// Ajustes: controle, conectores, Sentinela, memória, cofre (só chaves), persona, uso, silêncio,
-// aparência, PIN e créditos.
+// Ajustes: controle, conectores, Sentinela, memória, cofre (só chaves), persona, uso, notificações
+// neste celular, silêncio, aparência, PIN e créditos.
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
@@ -10,6 +10,14 @@ import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { Sheet } from '../components/Sheet'
 import { fmtRelative, fmtWhen, parseDate } from '../lib/format'
+import {
+  disablePush,
+  enablePush,
+  pushErrorMessage,
+  readPushStatus,
+  sendTestPush,
+  type PushStatus,
+} from '../lib/push'
 import type { MemoryFact, SentinelRules, SettingsView, Usage, VaultKey } from '../types'
 
 function Section({ id, title, summary, children, open }: { id: string; title: string; summary?: ReactNode; children: ReactNode; open?: boolean }) {
@@ -267,6 +275,108 @@ function Cofre() {
   )
 }
 
+// ------------------------------------------------------------------ notificações neste celular
+const PUSH_LABEL: Record<PushStatus, { text: string; tone: string }> = {
+  unsupported: { text: 'não suportado', tone: 'muted' },
+  blocked: { text: 'bloqueado', tone: 'bad' },
+  off: { text: 'desligado', tone: 'muted' },
+  on: { text: 'ligado', tone: 'good' },
+}
+
+const PUSH_HINT: Record<PushStatus, string> = {
+  unsupported: 'Este navegador não recebe notificações push. No Android, abra o Talos pelo app instalado no Chrome.',
+  blocked:
+    'O Chrome bloqueou as notificações do Talos. Para liberar: segure o ícone do app → Informações do app → Notificações (ou, no Chrome, Configurações → Configurações do site → Notificações) e permita.',
+  off: 'Avisos, cartões de aprovação e respostas chegam aqui mesmo com o app fechado.',
+  on: 'Avisos, cartões de aprovação e respostas chegam aqui mesmo com o app fechado.',
+}
+
+function NotificacoesCelular({ onStatus }: { onStatus: (s: PushStatus) => void }) {
+  const toast = useStore((s) => s.toast)
+  const [status, setStatus] = useState<PushStatus | null>(null)
+  const [serverOn, setServerOn] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const show = (s: PushStatus) => {
+    setStatus(s)
+    onStatus(s)
+  }
+
+  useEffect(() => {
+    void readPushStatus().then(show)
+    api
+      .pushKey()
+      .then((k) => setServerOn(k.enabled))
+      .catch(() => undefined)
+  }, [])
+
+  const toggle = async (on: boolean) => {
+    setBusy(true)
+    try {
+      show(on ? await enablePush() : await disablePush())
+      toast(on ? 'Notificações ligadas neste celular.' : 'Notificações desligadas neste celular.')
+    } catch (e) {
+      toast(pushErrorMessage(e), 'bad')
+      show(await readPushStatus())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const test = async () => {
+    setBusy(true)
+    try {
+      const r = await sendTestPush()
+      if (r.ok) toast('Teste enviado. Deve chegar em alguns segundos.')
+      else if (r.removed) toast('A inscrição deste celular expirou. Desligue e ligue as notificações de novo.', 'bad')
+      else toast('O serviço de notificações recusou o teste. Tente de novo em instantes.', 'bad')
+    } catch (e) {
+      toast(pushErrorMessage(e), 'bad')
+    } finally {
+      setBusy(false)
+      show(await readPushStatus())
+    }
+  }
+
+  const fixed = status === null || status === 'unsupported' || status === 'blocked'
+  return (
+    <div className="stack">
+      <label className="switch-row">
+        <span className="row-main">
+          <span className="row-title">Receber notificações</span>
+          <span className="row-sub">{status ? PUSH_HINT[status] : 'Verificando…'}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={status === 'on'}
+          aria-checked={status === 'on'}
+          disabled={busy || fixed}
+          onChange={(e) => void toggle(e.target.checked)}
+        />
+      </label>
+      {status === 'on' && (
+        <div className="row-buttons">
+          <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void test()}>
+            <Icon name="enviar" size={18} />
+            Enviar teste
+          </button>
+        </div>
+      )}
+      {serverOn === false && (
+        <p className="warn-line">
+          No servidor, NOTIFY_CHANNELS não inclui <code>app</code>: por enquanto só o teste chega aqui.
+        </p>
+      )}
+      <p className="muted small">
+        Nas horas de silêncio só passam os avisos urgentes. A notificação traz só um resumo: tocar abre o cartão completo no
+        app, e nada é aprovado pela notificação. Com o app aberto na tela, os avisos chegam sem som.
+      </p>
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------ uso
 function Uso({ usage }: { usage: Usage | null }) {
   if (!usage) return <p className="muted">Carregando…</p>
@@ -317,6 +427,7 @@ export function Ajustes() {
   const [usage, setUsage] = useState<Usage | null>(null)
   const [pin, setPinValue] = useState('')
   const [hasPin, setHasPin] = useState(() => !!getPin())
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null)
 
   useEffect(() => {
     api.settings().then(setSettings).catch(() => undefined)
@@ -405,6 +516,14 @@ export function Ajustes() {
 
         <Section id="uso" title="Uso da assinatura" summary={usage ? `${usage.today.runs} de ${usage.daily_limit} hoje` : ''}>
           <Uso usage={usage} />
+        </Section>
+
+        <Section
+          id="notificacoes"
+          title="Notificações neste celular"
+          summary={pushStatus ? <span className="chip" data-tone={PUSH_LABEL[pushStatus].tone}>{PUSH_LABEL[pushStatus].text}</span> : ''}
+        >
+          <NotificacoesCelular onStatus={setPushStatus} />
         </Section>
 
         <Section

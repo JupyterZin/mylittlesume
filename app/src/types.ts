@@ -242,6 +242,14 @@ export interface SettingsView {
   approval_ttl_hours: number
 }
 
+export interface PushKey {
+  /** chave VAPID pública (base64url): o `applicationServerKey` da inscrição */
+  public_key: string
+  /** NOTIFY_CHANNELS inclui o app? (senão o servidor só manda o teste) */
+  enabled: boolean
+  subscriptions: number
+}
+
 export interface SentinelRules {
   yaml: string
   classifier: boolean
