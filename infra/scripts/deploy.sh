@@ -6,6 +6,17 @@ RESTART=1
 [[ "${1:-}" == "--no-restart" ]] && RESTART=0
 [[ $EUID -eq 0 ]] || { echo "Rode com sudo."; exit 1; }
 
+# app PWA: gera app/dist antes de copiar (o core serve-o em /). Roda como o administrador que chamou
+# o sudo, para não deixar node_modules de root no repositório.
+if [[ -f "$REPO_DIR/app/package.json" ]]; then
+  if command -v npm >/dev/null; then
+    BUILD_USER="${SUDO_USER:-root}"
+    sudo -u "$BUILD_USER" -H bash -c "cd '$REPO_DIR/app' && npm ci --no-audit --no-fund && npm run build"
+  else
+    echo "Aviso: npm não encontrado — o app não foi gerado (a API e o Telegram funcionam sem ele)." >&2
+  fi
+fi
+
 rsync -a --delete --exclude .git --exclude node_modules --exclude '.venv' --exclude '__pycache__' \
   --exclude 'workspace/memoria' --exclude 'pw-browsers' "$REPO_DIR/" /opt/talos/
 chown -R root:talos /opt/talos && chmod -R g+rX,o-rwx /opt/talos

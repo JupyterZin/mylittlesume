@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "description": "Talos — app PWA (conversa, tarefas, aprovações, agenda, tela, ajustes) com o mascote 3D",
   "scripts": {
     "dev": "vite",
