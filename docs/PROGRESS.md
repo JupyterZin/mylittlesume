@@ -64,7 +64,9 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ **F1 no servidor**: bot do Telegram com allowlist do `chat_id`; "olá" respondido pela assinatura.
 - ✅ **F5 (parcial) no servidor**: `tailscale serve` publica o app em HTTPS da tailnet; no celular (Android) o mascote 3D aparece e o Talos responde pelo app.
 - ✅ **Google no servidor**: projeto "Talos" no Google Cloud (Gmail, Calendar, Drive), cliente OAuth Desktop, branding com página inicial e política de privacidade no GitHub Pages (`docs/index.html`, `docs/privacidade.html`), `talos google-auth` pelo celular. `talos doctor` todo ✅ (Claude, Telegram, Google, navegador, Tela, Jev, monitor).
-- ⏳ Cofre (`dados.*`), primeiro backup, caso âncora real (`+empresa-teste`), Tela pelo app, instalação como PWA.
+- ✅ Cofre com 5 `dados.*` (via `talos vault set`), primeiro backup (`talos-backup.service`).
+- ✅ **F2 no servidor — caso âncora real**: pedido no Telegram → plano → cartão de aprovação → "Aprovar e enviar" → email entregue em `+empresa-teste` (Lucas confirmou).
+- ⏳ F3 no servidor: resposta manual na thread → notificação com resumo (em teste). Tela pelo app, instalação como PWA.
 
 ### Próximas
 - ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
