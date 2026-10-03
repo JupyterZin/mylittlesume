@@ -3,7 +3,7 @@ CORE := core
 UV := uv --directory $(CORE)
 PROD := /opt/talos
 
-.PHONY: dev test lint e2e doctor backup restore deploy migrate
+.PHONY: dev test lint e2e doctor backup restore deploy migrate app app-test
 
 dev:            ## arranca o core localmente (usa variáveis do ambiente atual)
 	$(UV) run talos run
@@ -13,6 +13,12 @@ test:           ## suíte offline (fakes; não consome a assinatura)
 
 lint:
 	$(UV) run ruff check talos tests
+
+app:            ## app PWA: instala as dependências (npm ci) e gera app/dist (servido pelo core em /)
+	cd app && npm ci --no-audit --no-fund && npm run build
+
+app-test:       ## testes do app (vitest)
+	cd app && npm test
 
 e2e:            ## caso âncora REAL (consome a assinatura) — só sob demanda
 	$(UV) run pytest -q -m e2e -o addopts=''

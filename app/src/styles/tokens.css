@@ -1,0 +1,115 @@
+/* Paleta "bronze e pátina" (SPEC §10). Contrastes de texto verificados para AA (≥ 4,5:1). */
+:root {
+  --font: 'Archivo Variable', Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  --bronze: #b5762f;
+  --bronze-light: #e8c9a0;
+  --patina-deep: #13302e;
+  --patina: #4e8c80;
+  --red: #a83a3a;
+
+  --tabbar-h: 62px;
+  --radius: 14px;
+
+  /* claro */
+  color-scheme: light;
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --surface-2: #e7ece8;
+  --line: #d6ddd9;
+  --line-strong: #b4c0bb;
+  --text: #182224;
+  --text-2: #4f5d5a; /* 6,3:1 sobre o fundo */
+  --accent-text: #8a561c; /* bronze para texto: 5,6:1 */
+  --patina-text: #2f6a5f; /* 5,7:1 */
+  --danger-text: #a83a3a; /* 5,8:1 */
+  --on-bronze: #141a1c; /* texto sobre o bronze: 4,9:1 */
+  --focus: #2f6a5f;
+  --bubble-me: #e8c9a0;
+  --bubble-me-text: #182224;
+  --bubble-them: #ffffff;
+  --stage-top: #dfe7e3;
+  --stage-bottom: #eef2ef;
+  --stage-glow: rgba(232, 201, 160, 0.55);
+  --tab-active: rgba(181, 118, 47, 0.16);
+  --toast-bg: #182224;
+  --toast-text: #f3f5f2;
+  --chip-neutral-bg: #e6eae7;
+  --chip-neutral-text: #3d4a47;
+  --chip-warn-bg: #f6e7d2;
+  --chip-warn-text: #7a4b14;
+  --chip-bad-bg: #f6dfdc;
+  --chip-bad-text: #8e2f2f;
+  --chip-good-bg: #dbebe6;
+  --chip-good-text: #24564d;
+  --shadow: 0 1px 2px rgba(19, 48, 46, 0.05), 0 6px 18px rgba(19, 48, 46, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #13302e;
+    --surface: #1a3b38;
+    --surface-2: #0f2725;
+    --line: #2a4e4a;
+    --line-strong: #3d6661;
+    --text: #edf1ec;
+    --text-2: #a6bbb6;
+    --accent-text: #e8c9a0;
+    --patina-text: #8cc5b8;
+    --danger-text: #f0a39c;
+    --focus: #e8c9a0;
+    --bubble-me: #5c4122;
+    --bubble-me-text: #f7ecdd;
+    --bubble-them: #1d403d;
+    --stage-top: #0c2321;
+    --stage-bottom: #12302d;
+    --stage-glow: rgba(78, 140, 128, 0.32);
+    --tab-active: rgba(232, 201, 160, 0.14);
+    --toast-bg: #e8c9a0;
+    --toast-text: #13302e;
+    --chip-neutral-bg: rgba(237, 241, 236, 0.09);
+    --chip-neutral-text: #c9d6d2;
+    --chip-warn-bg: rgba(232, 201, 160, 0.14);
+    --chip-warn-text: #e8c9a0;
+    --chip-bad-bg: rgba(240, 163, 156, 0.14);
+    --chip-bad-text: #f0a39c;
+    --chip-good-bg: rgba(140, 197, 184, 0.15);
+    --chip-good-text: #9fd2c6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #13302e;
+  --surface: #1a3b38;
+  --surface-2: #0f2725;
+  --line: #2a4e4a;
+  --line-strong: #3d6661;
+  --text: #edf1ec;
+  --text-2: #a6bbb6;
+  --accent-text: #e8c9a0;
+  --patina-text: #8cc5b8;
+  --danger-text: #f0a39c;
+  --focus: #e8c9a0;
+  --bubble-me: #5c4122;
+  --bubble-me-text: #f7ecdd;
+  --bubble-them: #1d403d;
+  --stage-top: #0c2321;
+  --stage-bottom: #12302d;
+  --stage-glow: rgba(78, 140, 128, 0.32);
+  --tab-active: rgba(232, 201, 160, 0.14);
+  --toast-bg: #e8c9a0;
+  --toast-text: #13302e;
+  --chip-neutral-bg: rgba(237, 241, 236, 0.09);
+  --chip-neutral-text: #c9d6d2;
+  --chip-warn-bg: rgba(232, 201, 160, 0.14);
+  --chip-warn-text: #e8c9a0;
+  --chip-bad-bg: rgba(240, 163, 156, 0.14);
+  --chip-bad-text: #f0a39c;
+  --chip-good-bg: rgba(140, 197, 184, 0.15);
+  --chip-good-text: #9fd2c6;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
