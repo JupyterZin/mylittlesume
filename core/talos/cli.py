@@ -180,8 +180,14 @@ def secrets_google_client(file: str = typer.Option("/etc/talos/google_client.jso
     import os
     from pathlib import Path
 
-    typer.echo("Cole o conteúdo INTEIRO do ficheiro JSON do Google (uma linha) e Enter:")
+    typer.echo("Cole o conteúdo INTEIRO do ficheiro JSON do Google (uma linha) — ou só o ID do cliente — e Enter:")
     raw = input().strip()
+    if raw.endswith(".apps.googleusercontent.com"):  # sem o ficheiro: monta o JSON a partir do ID + segredo
+        secret = "".join(getpass.getpass("Cole o segredo do cliente (não aparece) e Enter: ").split())
+        raw = json.dumps({"installed": {
+            "client_id": raw, "client_secret": secret, "redirect_uris": ["http://localhost"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token",
+        }})
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:

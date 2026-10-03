@@ -105,3 +105,19 @@ def test_google_client_paste(tmp_path, monkeypatch):
     r = CliRunner().invoke(app, ["secrets", "google-client", "--file", str(dest)],
                            input=json.dumps({"web": {}}) + "\n")
     assert r.exit_code == 1 and "Desktop" in r.output
+
+
+def test_google_client_from_id_and_secret(tmp_path, monkeypatch):
+    import json
+
+    from typer.testing import CliRunner
+
+    from talos.cli import app
+
+    dest = tmp_path / "gc.json"
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": "GOCSPX-abc 123")
+    r = CliRunner().invoke(app, ["secrets", "google-client", "--file", str(dest)],
+                           input="123-abc.apps.googleusercontent.com\n")
+    assert r.exit_code == 0, r.output
+    inst = json.loads(dest.read_text())["installed"]
+    assert inst["client_secret"] == "GOCSPX-abc123" and inst["token_uri"].startswith("https://oauth2")
