@@ -10,11 +10,6 @@ RESTART=1
 [[ $EUID -eq 0 ]] || { echo "Rode com sudo."; exit 1; }
 as_talos() { sudo -u talos -H env PATH=/usr/local/bin:/usr/bin:/bin "$@"; }
 
-# App (PWA): compila antes de copiar, se existir
-if [[ -f "$REPO_DIR/app/package.json" ]] && command -v npm >/dev/null; then
-  (cd "$REPO_DIR/app" && npm ci --no-audit --no-fund && npm run build)
-fi
-
 # app PWA: gera app/dist antes de copiar (o core serve-o em /). Roda como o administrador que chamou
 # o sudo, para não deixar node_modules de root no repositório.
 if [[ -f "$REPO_DIR/app/package.json" ]]; then

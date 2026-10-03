@@ -200,7 +200,7 @@ def test_usage(client: TestClient, h2: Harness) -> None:
         s.add(UsageLog(model="sonnet", turns=9, created_at=utcnow() - timedelta(days=30)))
         s.commit()
     u = client.get("/api/usage").json()
-    assert u["daily_limit"] == 60 and len(u["days"]) == 7
+    assert u["daily_limit"] == 30 and u["plan"] == "pro" and len(u["days"]) == 7  # padrão do plano Pro
     assert u["today"]["runs"] == 2 and u["today"]["turns"] == 4 and u["today"]["errors"] == 1
     assert u["today"]["cost_usd"] == pytest.approx(0.13)
     assert u["models_today"] == {"sonnet": 1, "haiku": 1}

@@ -402,7 +402,7 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             agg["rate_limited"] += int(r.rate_limited)
             if d == today.isoformat():
                 models[r.model] = models.get(r.model, 0) + 1
-        return {"auth_mode": s.auth_mode, "daily_limit": s.daily_run_soft_limit,
+        return {"auth_mode": s.auth_mode, "daily_limit": s.run_limit, "plan": s.claude_plan,
                 "today": days[today.isoformat()], "days": list(days.values()), "models_today": models,
                 "rate_limited_until": app.control.rate_limited_until()}
 
@@ -432,7 +432,7 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             "agent_name": s.agent_name, "version": __version__, "timezone": s.timezone, "auth_mode": s.auth_mode,
             "quiet_hours": {"window": s.quiet_hours, "active": quiet_now(), "until": quiet_until()},
             "classifier": bool(s.sentinel_classifier), "pin_required": bool(s.app_pin),
-            "daily_run_soft_limit": s.daily_run_soft_limit, "connectors": connectors, "persona": persona,
+            "daily_run_soft_limit": s.run_limit, "connectors": connectors, "persona": persona,
             "approval_ttl_hours": s.approval_ttl_hours,
         }
 

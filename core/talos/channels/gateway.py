@@ -162,7 +162,8 @@ class Gateway:
 
     async def cmd_tela(self, channel: str, chat_id: str, args: list[str]) -> str:
         url = self.app.db.get_state("app").get("url", "")
-        return f"Tela do {self.s.agent_name}: {url}/tela" if url else "O app ainda não tem URL configurada."
+        return (f"Tela do {self.s.agent_name}: {url}/navegador (com Assumir controle / Devolver)"
+                if url else "O app ainda não tem URL configurada.")
 
     async def cmd_cancelar(self, channel: str, chat_id: str, args: list[str]) -> str:
         if not args or not args[0].lstrip("#").isdigit():

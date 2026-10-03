@@ -48,6 +48,19 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - Dados para o cofre no setup (fornecidos pelo Lucas, **não** versionados): `dados.nome_completo`, `dados.telefone`.
 - ⏳ **Máquina do servidor**: o contêiner desta sessão é temporário (apagado quando a sessão fica inativa, sem entrada de rede) — não pode ser o servidor do Talos. Falta escolher: VPS ou computador do Lucas.
 
+### F4 · Navegador real (agente em paralelo, ADR-020)
+- ✅ `CDPBrowser` (Playwright Python via CDP), `vault_fill` por rótulo/placeholder/CSS, screenshot e URL no cartão, formulário de teste (`infra/testpages/`), regras ajustadas ao formato REAL do MCP 0.0.83.
+- ✅ [offline, com Chromium + MCP reais] formulário até antes de submeter → cartão com screenshot → submissão só depois da aprovação; senha/cartão → takeover; cliques disfarçados apanhados pelo texto real.
+- ⏳ [servidor] o mesmo na VPS + assumir/devolver a Tela pelo celular.
+
+### F5 · App PWA + mascote (agente em paralelo, ADR-021)
+- ✅ 6 páginas (Conversa, Tarefas, Aprovações, Agenda, Tela, Ajustes), mascote 3D RobotExpressive em bronze com os 15 estados, `prefers-reduced-motion`, fallback 2D, PIN, ditado por voz; API e WS tipado; 41 testes Python + 28 vitest; `npm run build` sem erros.
+- ⏳ [servidor] instalar no celular via Tailscale HTTPS; aprovar pelo app; fluidez num celular real.
+- ⬜ Renders das poses no Telegram (os PNGs já existem em `app/public/`).
+
+### Instalação na VPS (Hostinger KVM 2, Ubuntu 24.04)
+- ✅ `bootstrap.sh base` testado num contêiner Ubuntu 24.04 (usuário, diretórios, venv, cofre, migrações, doctor); corrigidos: comentários inline no `.env` (systemd), chave do cofre criada como root, `PrivateTmp` que escondia o Xvfb da Tela, AppArmor para o sandbox do Chromium, `cd /` (npx como `talos` falhava com EACCES em `/root`).
+- ⏳ Lucas a correr o passo 2 na VPS.
+
 ### Próximas
-- ⬜ F4: `vault_fill` real via CDP, screenshot para o cartão, página de formulário de teste, takeover/devolver.
-- ⬜ F5: PWA + mascote. ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
+- ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
