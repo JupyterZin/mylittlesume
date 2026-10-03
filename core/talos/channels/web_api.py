@@ -92,6 +92,9 @@ def default_static_dir() -> Path:
     return Path(os.environ.get("TALOS_APP_DIST") or REPO_ROOT / "app" / "dist")
 
 
+HEARTBEAT_SECONDS = 20
+
+
 def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool = True) -> FastAPI:
     """`static_dir=True` usa `app/dist` (ou `TALOS_APP_DIST`); `None`/`False` não serve o app."""
     api = FastAPI(title="Talos", version=__version__, docs_url=None, redoc_url=None)
@@ -467,7 +470,12 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
             await sock.send_json({"type": "mascot_state", "payload": mapper.snapshot()})
             while True:
                 get_task = asyncio.create_task(q.get())
-                done, _ = await asyncio.wait({get_task, read_task}, return_when=asyncio.FIRST_COMPLETED)
+                done, _ = await asyncio.wait({get_task, read_task}, timeout=HEARTBEAT_SECONDS,
+                                             return_when=asyncio.FIRST_COMPLETED)
+                if not done:  # sinal de vida: o app deteta ligações mortas (Android em segundo plano)
+                    get_task.cancel()
+                    await sock.send_json({"type": "heartbeat"})
+                    continue
                 if get_task not in done:
                     get_task.cancel()
                     break

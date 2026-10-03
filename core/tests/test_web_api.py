@@ -317,3 +317,14 @@ def test_spa_served_only_when_dist_exists(h2: Harness, dist: Path, tmp_path: Pat
             assert ws.receive_json()["type"] == "mascot_state"
     with TestClient(build_api(h2.app, h2.gw, static_dir=tmp_path / "nada")) as c:
         assert c.get("/").status_code == 404
+
+
+def test_ws_heartbeat_keeps_phone_connection_alive(client: TestClient, monkeypatch) -> None:
+    """O servidor manda sinal de vida para o app detetar sockets mortos (Android em segundo plano)."""
+    import talos.channels.web_api as web_api
+
+    monkeypatch.setattr(web_api, "HEARTBEAT_SECONDS", 0.05)
+    with client.websocket_connect("/ws") as ws:
+        first = ws.receive_json()
+        assert first["type"] == "mascot_state"
+        assert ws.receive_json()["type"] == "heartbeat"

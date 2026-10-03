@@ -14,6 +14,7 @@ let attempt = 0
 let timer: ReturnType<typeof setTimeout> | null = null
 let everOpened = false
 let stopped = false
+let lastSeen = Date.now()
 
 function url(): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -43,6 +44,7 @@ export function connect(): void {
   }
   sock = ws
   ws.onopen = () => {
+    lastSeen = Date.now()
     ws.send(JSON.stringify({ type: 'auth', pin: getPin() ?? '' }))
     attempt = 0
     const s = useStore.getState()
@@ -53,8 +55,11 @@ export function connect(): void {
     everOpened = true
   }
   ws.onmessage = (msg) => {
+    lastSeen = Date.now()
     try {
-      useStore.getState().handle(JSON.parse(String(msg.data)) as WsEvent)
+      const ev = JSON.parse(String(msg.data)) as WsEvent | { type: 'heartbeat' }
+      if (ev.type === 'heartbeat') return
+      useStore.getState().handle(ev as WsEvent)
     } catch {
       /* mensagem ilegível: ignora */
     }
@@ -84,18 +89,45 @@ export function reconnectNow(): void {
   connect()
 }
 
+/** O servidor manda um sinal de vida a cada 20 s; sem nada há 45 s, a ligação está morta
+ *  (o Android congela o app em segundo plano e não fecha o socket) → reconecta. */
+const STALE_MS = 45_000
+
+function checkStale(): void {
+  if (sock && sock.readyState === WebSocket.OPEN && Date.now() - lastSeen > STALE_MS) {
+    const dead = sock
+    sock = null
+    dead.onclose = null
+    try {
+      dead.close()
+    } catch {
+      /* já estava fechado */
+    }
+    useStore.getState().setConn('closed')
+    reconnectNow()
+  }
+}
+
 export function startLive(): () => void {
   stopped = false
   connect()
   const onVisible = () => {
-    if (document.visibilityState === 'visible' && !sock) reconnectNow()
+    if (document.visibilityState !== 'visible') return
+    // voltou ao primeiro plano: busca o que chegou entretanto e confirma que a ligação está viva
+    void useStore.getState().refreshAll()
+    if (!sock) reconnectNow()
+    else checkStale()
   }
+  const watchdog = window.setInterval(checkStale, 10_000)
   document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('online', reconnectNow)
+  window.addEventListener('focus', onVisible)
   return () => {
     stopped = true
+    window.clearInterval(watchdog)
     document.removeEventListener('visibilitychange', onVisible)
     window.removeEventListener('online', reconnectNow)
+    window.removeEventListener('focus', onVisible)
     sock?.close()
   }
 }
