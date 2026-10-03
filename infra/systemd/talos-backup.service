@@ -1,0 +1,13 @@
+[Unit]
+Description=Talos — backup diário (banco + memória)
+
+[Service]
+Type=oneshot
+User=talos
+Group=talos
+EnvironmentFile=-/etc/talos/backup.env
+ExecStart=/opt/talos/infra/scripts/backup.sh
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/talos
+ReadOnlyPaths=/srv/talos/workspace

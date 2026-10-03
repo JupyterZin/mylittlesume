@@ -1,0 +1,38 @@
+[Unit]
+Description=Talos core (API, bot do Telegram, workers, executor, monitor e agendador)
+After=network-online.target talos-browser.service
+Wants=network-online.target talos-browser.service
+
+[Service]
+Type=simple
+User=talos
+Group=talos
+WorkingDirectory=/opt/talos/core
+EnvironmentFile=/etc/talos/secrets.env
+Environment=HOME=/var/lib/talos
+Environment=PYTHONUNBUFFERED=1
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/talos/pw-browsers
+Environment=PATH=/var/lib/talos/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/talos/core/.venv/bin/talos run
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+# endurecimento
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/var/lib/talos /srv/talos/workspace
+ReadOnlyPaths=/etc/talos
+UMask=0077
+# VPS KVM 2 (8 GB): 2 GB para o core + CLI do Claude; no Raspberry Pi 4 (4 GB) use 1200M
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

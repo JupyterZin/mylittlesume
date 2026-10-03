@@ -1,0 +1,10 @@
+[Unit]
+Description=Talos — backup diário às 03:30 (Lisboa)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Lisbon
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

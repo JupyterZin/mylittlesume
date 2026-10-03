@@ -1,0 +1,12 @@
+{
+  "_comentario": "Referência do que o estágio `bootstrap.sh serve` configura. Só a tailnet vê isto (serve, nunca funnel).",
+  "TCP": { "443": { "HTTPS": true } },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": { "Proxy": "http://127.0.0.1:8000" },
+        "/tela": { "Proxy": "http://127.0.0.1:6080" }
+      }
+    }
+  }
+}

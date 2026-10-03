@@ -1,0 +1,22 @@
+[Unit]
+Description=Talos — Chromium persistente em Xvfb :99 (CDP só em 127.0.0.1:9222)
+After=network-online.target
+
+[Service]
+Type=simple
+User=talos
+Group=talos
+Environment=HOME=/var/lib/talos
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/talos/pw-browsers
+ExecStart=/opt/talos/infra/scripts/browser.sh
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/talos
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target

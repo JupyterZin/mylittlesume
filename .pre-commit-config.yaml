@@ -1,0 +1,19 @@
+# pre-commit install  (o bootstrap instala o hook no servidor)
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^core/
+  - repo: local
+    hooks:
+      - id: no-env-files
+        name: nada de .env reais no git
+        entry: "segredos reais não entram no git (use .env.example)"
+        language: fail
+        files: '(^|/)(\.env|secrets\.env|vault\.key|google_client\.json|token\.json)$'
