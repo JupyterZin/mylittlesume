@@ -33,6 +33,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // notificações Web Push (push, notificationclick): public/push-sw.js, servido na raiz
+        importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,glb,webmanifest}'],
         globIgnores: ['poses/**', '**/*vietnamese*'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
