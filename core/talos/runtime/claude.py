@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -19,6 +20,9 @@ if TYPE_CHECKING:
     from talos.services import Services
 
 log = get_logger("talos.runtime")
+
+# `skills="all"` põe `Skill` em allowed_tools; o hook PreToolUse continua a ver essas chamadas (ADR-006)
+warnings.filterwarnings("ignore", message="can_use_tool will not be invoked for: Skill")
 
 PLAYWRIGHT_MCP = os.environ.get("PLAYWRIGHT_MCP_PACKAGE", "@playwright/mcp@0.0.83")
 ENV_DROP = ("CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_ENTRYPOINT")
@@ -100,20 +104,9 @@ class ClaudeRuntime:
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
-    async def run(self, req: RunRequest) -> RunResult:
-        from claude_agent_sdk import (
-            AssistantMessage,
-            ClaudeSDKClient,
-            ClaudeSDKError,
-            HookMatcher,
-            PermissionResultAllow,
-            PermissionResultDeny,
-            RateLimitEvent,
-            ResultMessage,
-            SystemMessage,
-            TextBlock,
-            ToolUseBlock,
-        )
+    def build_options(self, req: RunRequest) -> tuple[Any, ToolGate, ToolContext, list[str]]:
+        """Monta o ClaudeAgentOptions de um job (separado de run() para o smoke test do handshake)."""
+        from claude_agent_sdk import HookMatcher, PermissionResultAllow, PermissionResultDeny
 
         profile = PROFILES[req.profile]
         allowed = allowed_tools_for(profile)
@@ -175,7 +168,22 @@ class ClaudeRuntime:
             resume=req.resume_session_id,
             stderr=lambda line: stderr_tail.append(line) if len(stderr_tail) < 50 else None,
         )
+        return opts, gate, ctx, stderr_tail
 
+    async def run(self, req: RunRequest) -> RunResult:
+        from claude_agent_sdk import (
+            AssistantMessage,
+            ClaudeSDKClient,
+            ClaudeSDKError,
+            RateLimitEvent,
+            ResultMessage,
+            SystemMessage,
+            TextBlock,
+            ToolUseBlock,
+        )
+
+        profile = PROFILES[req.profile]
+        opts, gate, ctx, stderr_tail = self.build_options(req)
         res = RunResult(model=profile.model)
         texts: list[str] = []
         started = time.monotonic()
