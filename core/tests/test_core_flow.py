@@ -99,3 +99,17 @@ async def test_commands(h):
     t = h.app.tasks.create("Teste", "x")
     assert "cancelada" in await h.gw.on_command("telegram", CHAT, "cancelar", [str(t.id)])
     assert h.app.tasks.get(t.id).status == "cancelled"
+
+
+async def test_takeover_blocks_agent_and_resumes_tasks(h):
+    h.rt.reply("ok")
+    t = h.app.tasks.create("Formulário", "preencher")
+    h.app.tasks.update(t.id, status="waiting_external")
+    assert await h.orch.takeover_start("app")
+    await h.say("olá")
+    assert await h.drain() == 0  # agente parado enquanto o Lucas usa a Tela
+    assert await h.orch.takeover_end("app")
+    await h.drain()
+    prompts = [r.prompt for r in h.rt.requests]
+    assert any("devolveu o controle da Tela" in p for p in prompts)
+    assert any("Lucas: olá" in p for p in prompts)

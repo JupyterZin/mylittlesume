@@ -121,7 +121,12 @@ class Orchestrator:
     async def process_one(self, kinds: tuple[str, ...] | None = None) -> bool:
         if self.app.control.is_paused():
             return False
-        job = self.app.queue.claim(kinds or tuple(self._handlers))
+        kinds = kinds or tuple(self._handlers)
+        if self.app.control.takeover_active():  # o Lucas está a usar a Tela: só jobs não-agente
+            kinds = tuple(k for k in kinds if not k.startswith("agent."))
+            if not kinds:
+                return False
+        job = self.app.queue.claim(kinds)
         if job is None:
             return False
         handler = self._handlers.get(job.kind)
@@ -178,6 +183,33 @@ class Orchestrator:
         changed = self.app.control.resume(by)
         self.app.bus.emit("resumed", {"by": by})
         return changed
+
+    async def takeover_start(self, by: str) -> bool:
+        """'Assumir controle' da Tela: para o agente e guarda as tarefas que esperavam por isso."""
+        if self.app.control.takeover_active():
+            return False
+        waiting = [t.id for t in self.app.tasks.list(("waiting_external", "running"), limit=20)]
+        self.app.control.set_takeover(True, by, waiting)
+        for t in list(self._running.values()):
+            t.cancel()
+        self.app.bus.emit("takeover_started", {"by": by})
+        return True
+
+    async def takeover_end(self, by: str) -> bool:
+        """'Devolver ao Talos': retoma as tarefas que estavam à espera do Lucas na Tela."""
+        st = self.app.control.takeover_state()
+        if not st.get("active"):
+            return False
+        self.app.control.set_takeover(False, by)
+        for tid in st.get("task_ids", []):
+            t = self.app.tasks.get(tid)
+            if t and t.status in ("waiting_external", "running"):
+                self.app.tasks.update(tid, status="running")
+                self.app.queue.enqueue("agent.task_run", {
+                    "event": "O Lucas devolveu o controle da Tela. Veja o estado atual da página "
+                             "(browser_snapshot) e continue de onde parou."}, task_id=tid)
+        self.app.bus.emit("takeover_ended", {"by": by})
+        return True
 
     def cancel_if_paused(self) -> None:
         """Chamado pelo tique: pausa pedida pelo CLI noutro processo."""
