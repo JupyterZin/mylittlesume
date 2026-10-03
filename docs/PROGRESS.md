@@ -39,6 +39,15 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 ### Verificação real do Agent SDK (sem chamar o modelo)
 - ✅ `tests/smoke_handshake.py`: o CLI arranca com as opções reais; servidor MCP `talos` conectado (23 ferramentas na conversa, 24 nas tarefas); hooks aplicados; modo de permissão `default`.
 
+## Sessão 1 (cont.) — respostas do Lucas
+- Plano **Pro** → `CLAUDE_PLAN=pro`: planejamento com Sonnet, teto de 30 execuções/dia (ADR-018).
+- **Sistema 1 = Jev (TypeSafe)** (ADR-017): roteamento da conversa (conversa leve → Haiku), triagem de respostas com resumo extrativo, deteção de injeção, classificador da Sentinela, classificação de emails. Redação de dados pessoais antes de sair. ✅ [offline] contrato + 10 testes com servidor falso. ⏳ chamada real: `api.typesafe.ai` está bloqueado pela rede deste contêiner — validar com `talos doctor` no servidor.
+- **Organização semanal do Gmail** às segundas 09:00 (ADR-019): ✅ [offline] plano → cartão "Aprovar e organizar" → rótulos `Talos/*` + arquivo → `/desfazer_organizacao`; sem Jev usa as categorias do Gmail.
+- **Takeover** da Tela: assumir controle pausa o agente; devolver retoma as tarefas. ✅ [offline].
+- Gmail pessoal + plus-addressing `+talos`; horários confirmados (silêncio 22:30–08:00, briefing 08:30, reflexão 23:00).
+- Dados para o cofre no setup (fornecidos pelo Lucas, **não** versionados): `dados.nome_completo`, `dados.telefone`.
+- ⏳ **Máquina do servidor**: o contêiner desta sessão é temporário (apagado quando a sessão fica inativa, sem entrada de rede) — não pode ser o servidor do Talos. Falta escolher: VPS ou computador do Lucas.
+
 ### Próximas
 - ⬜ F4: `vault_fill` real via CDP, screenshot para o cartão, página de formulário de teste, takeover/devolver.
 - ⬜ F5: PWA + mascote. ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
