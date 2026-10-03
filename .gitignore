@@ -31,3 +31,6 @@ app/dist/
 *.db-shm
 *.db-wal
 *.sqlite3
+
+# worktrees de agentes do Claude Code
+.claude/worktrees/
