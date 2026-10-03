@@ -75,3 +75,13 @@ Formato: **contexto → decisão → consequência**. Divergências entre o SPEC
 - **Triagem:** determinística primeiro (cabeçalho `Auto-Submitted`, assunto de auto-resposta, heurística de injeção) e só depois Haiku — auto-respostas não gastam LLM nem fazem som.
 - **Follow-ups:** contam quando são **propostos** (no máximo 2); depois disso a tarefa é retomada para sugerir canal alternativo e a vigilância deixa de ter prazo (respostas continuam a ser detectadas).
 - **Briefing/reflexão:** recorrências semeadas uma vez em `schedules`; o briefing recebe um bloco de dados determinístico e é cortado em 8 linhas; a reflexão não notifica (escreve o diff em `memoria/`).
+
+## ADR-017 · Sistema 1 com Jev (TypeSafe) para poupar a assinatura
+- **Contexto:** o Lucas está no plano Pro e pediu o Jev como "Sistema 1" para decisões pequenas. Isto altera a restrição 2.1 do SPEC ("inferência só pelo Agent SDK") por decisão explícita do dono: o Claude continua a ser o único que raciocina, escreve e usa ferramentas; o Jev só devolve julgamentos tipados (choice/noul/score com probabilidades).
+- **Decisão:** cliente HTTP próprio (`talos/system1/client.py`, httpx) com o contrato do SDK oficial `typesafe-sdk` 0.7.2 (`POST /v1/systemone`, `Authorization: Bearer`, `{state, model: "jev-latest", questions}`), em vez de depender do SDK (que traz `httpx2` e outras dependências). A documentação viva (docs.typesafe.ai) e a API estão bloqueadas pela rede deste contêiner: o contrato foi lido do código do SDK e testado com servidor falso; validar no servidor com `talos doctor`.
+- **Onde entra:** (1) roteamento da conversa principal — conversa leve vai para o Haiku, tarefas recebem dica para `task_create` (só com confiança ≥ 0,55); (2) triagem de respostas com resumo **extrativo** (o Jev escolhe as frases, o código copia-as); (3) deteção de injeção (regex **ou** Jev — só endurece); (4) classificador da Sentinela (Jev → Haiku de reserva; "ok" com confiança < 0,6 vira "ask"); (5) classificação de emails na organização semanal.
+- **Privacidade:** tudo o que vai para o Jev passa por `sanitize()`: valores do cofre viram `[REDACTED:…]` e NIF/IBAN/cartão/telefone/código postal viram rótulos. O Jev é um terceiro; os emails (assunto, remetente, trechos) saem para ele — limitação registada em `SECURITY.md`.
+- **Falhas:** Jev fora do ar nunca bloqueia nada: cada julgamento devolve `None` e quem chama cai no determinístico/Haiku. O uso fica em `usage_log` com `model="jev"` e não conta para o teto diário do Claude.
+
+## ADR-018 · Plano Pro
+- **Decisão:** `CLAUDE_PLAN=pro` → planejamento com Sonnet (Opus é escasso no Pro), teto diário padrão de 30 execuções, concorrência 1; `max5`/`max20` reativam o Opus e sobem o teto (60/150).

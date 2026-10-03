@@ -18,6 +18,7 @@ from talos.events import EventBus
 from talos.executor import Executor
 from talos.memory.facts import ContactService, MemoryService
 from talos.scheduler.jobs import JobQueue
+from talos.system1.judgments import System1
 from talos.tasks import TaskService
 from talos.vault.store import Vault
 
@@ -42,13 +43,14 @@ class Services:
     drive: DriveAPI | None = None
     browser: Any = None
     runtime: Any = None
+    system1: System1 = field(default_factory=lambda: System1(None))
     extra: dict[str, Any] = field(default_factory=dict)
 
 
 def build_services(settings: Settings, db: Database, vault_key: bytes, *,
                    channels: dict[str, ChatChannel] | None = None, gmail: GmailAPI | None = None,
                    calendar: CalendarAPI | None = None, drive: DriveAPI | None = None,
-                   browser: Any = None) -> Services:
+                   browser: Any = None, system1: System1 | None = None) -> Services:
     bus = EventBus(db)
     queue = JobQueue(db)
     control = Control(db)
@@ -65,4 +67,5 @@ def build_services(settings: Settings, db: Database, vault_key: bytes, *,
                         tasks=tasks, control=control, notifier=notifier, gmail=gmail, calendar=calendar)
     return Services(settings=settings, db=db, bus=bus, queue=queue, control=control, vault=vault, tasks=tasks,
                     memory=memory, contacts=contacts, approvals=approvals, executor=executor, notifier=notifier,
-                    channels=channels, gmail=gmail, calendar=calendar, drive=drive, browser=browser)
+                    channels=channels, gmail=gmail, calendar=calendar, drive=drive, browser=browser,
+                    system1=system1 or System1(None))

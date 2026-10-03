@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from talos.sentinel.policy import ToolCall
 
@@ -57,3 +58,20 @@ def parse_verdict(text: str) -> tuple[str, str]:
     if verdict not in {"ok", "ask", "block"}:
         verdict = "ask"
     return verdict, str(data.get("reason", ""))[:300]
+
+
+class System1Classifier:
+    """Jev primeiro (não gasta a assinatura); se falhar, cai no Haiku (se houver)."""
+
+    def __init__(self, system1: Any, fallback: HaikuClassifier | None = None) -> None:
+        self.system1 = system1
+        self.fallback = fallback
+
+    async def __call__(self, call: ToolCall) -> tuple[str, str]:
+        res = await self.system1.sentinel_verdict(request=call.user_request, tool=call.name,
+                                                  tool_input=call.input, page=call.page_summary)
+        if res is not None:
+            return res
+        if self.fallback is not None:
+            return await self.fallback(call)
+        return "ok", "Sistema 1 indisponível (mantém a decisão determinística)"

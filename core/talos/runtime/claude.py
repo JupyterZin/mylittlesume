@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from talos.logging import get_logger
-from talos.runtime.base import ALWAYS_DISALLOWED, PROFILES, RunRequest, RunResult, allowed_tools_for
+from talos.runtime.base import (
+    ALWAYS_DISALLOWED,
+    PROFILES,
+    RunRequest,
+    RunResult,
+    allowed_tools_for,
+    resolve_profile,
+)
 from talos.runtime.gate import ToolGate
 from talos.tools.registry import ToolContext, call_tool, specs_for
 
@@ -108,7 +115,7 @@ class ClaudeRuntime:
         """Monta o ClaudeAgentOptions de um job (separado de run() para o smoke test do handshake)."""
         from claude_agent_sdk import HookMatcher, PermissionResultAllow, PermissionResultDeny
 
-        profile = PROFILES[req.profile]
+        profile = resolve_profile(req.profile, self.s)
         allowed = allowed_tools_for(profile)
         gate = ToolGate(self.app, self.sentinel, req, profile, allowed)
         ctx = ToolContext(app=self.app, task_id=req.task_id, conversation_id=req.conversation_id,
@@ -150,7 +157,7 @@ class ClaudeRuntime:
         stderr_tail: list[str] = []
         opts = _base_options(
             self.s,
-            model=profile.model,
+            model=req.model_override or profile.model,
             max_turns=profile.max_turns,
             cwd=str(self.s.workspace_dir),
             system_prompt={"type": "preset", "preset": "claude_code", "append": self._system_append(req)},
@@ -182,9 +189,9 @@ class ClaudeRuntime:
             ToolUseBlock,
         )
 
-        profile = PROFILES[req.profile]
+        profile = resolve_profile(req.profile, self.s)
         opts, gate, ctx, stderr_tail = self.build_options(req)
-        res = RunResult(model=profile.model)
+        res = RunResult(model=req.model_override or profile.model)
         texts: list[str] = []
         started = time.monotonic()
         try:

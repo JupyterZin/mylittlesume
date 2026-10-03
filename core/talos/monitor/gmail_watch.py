@@ -166,6 +166,10 @@ class GmailMonitor:
             w = s.get(Watch, int(p["watch_id"]))
         classe = triage.deterministic(msg)
         resumo = ""
+        if classe is None and self.app.system1.enabled:
+            t1 = await self.app.system1.triage_reply(msg)  # Sistema 1: sem gastar a assinatura
+            if t1 is not None:
+                classe, resumo = t1.classe, t1.resumo
         if classe is None:
             text = await self.orch.runtime.ask_text(triage.build_prompt(msg), "triage")
             classe, resumo = triage.parse(text)

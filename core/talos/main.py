@@ -57,16 +57,23 @@ async def amain() -> None:
     tg = TelegramChannel(settings.telegram_bot_token) if settings.telegram_bot_token else None
     if tg:
         channels["telegram"] = tg
-    app = build_services(settings, db, key, channels=channels, gmail=gmail, calendar=calendar, drive=drive)
+    from talos.system1.judgments import build_system1
+
+    app = build_services(settings, db, key, channels=channels, gmail=gmail, calendar=calendar, drive=drive,
+                         system1=build_system1(settings, db))
 
     runtime_holder: dict[str, Any] = {}
 
     async def ask_model(prompt: str) -> str:
         return await runtime_holder["rt"].ask_text(prompt, "classifier")
 
+    from talos.sentinel.classifier import System1Classifier
+
+    classifier = System1Classifier(app.system1, fallback=HaikuClassifier(ask_model)) if app.system1.enabled \
+        else HaikuClassifier(ask_model)
     sentinel = Sentinel(
         workspace_dir=settings.workspace_dir, vault_values=app.vault.personal_values,
-        authorized_keys=app.tasks.authorized_keys, classifier=HaikuClassifier(ask_model),
+        authorized_keys=app.tasks.authorized_keys, classifier=classifier,
         classifier_enabled=settings.sentinel_classifier,
         on_decision=lambda call, d: app.bus.emit("sentinel_decision", d.as_event(call), task_id=call.task_id),
     )
@@ -105,7 +112,8 @@ async def amain() -> None:
                                            log_config=None, access_log=False))
     api_task = asyncio.create_task(server.serve())
     workers = asyncio.create_task(orch.run_forever(stop))
-    log.info("talos_started", auth_mode=settings.auth_mode, paused=app.control.is_paused())
+    log.info("talos_started", auth_mode=settings.auth_mode, plan=settings.claude_plan,
+             system1="jev" if app.system1.enabled else "off", paused=app.control.is_paused())
 
     await stop.wait()
     log.info("talos_stopping")

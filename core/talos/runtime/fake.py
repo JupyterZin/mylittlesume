@@ -99,7 +99,7 @@ class FakeRuntime:
         if gate.paused_for_approval:
             notes.append(f"paused_for_approval:{gate.paused_for_approval}")
         return RunResult(text=text, session_id=req.resume_session_id or f"fake-{uuid.uuid4().hex[:8]}",
-                         model=profile.model, num_turns=1 + len(agent.calls), input_tokens=100,
+                         model=req.model_override or profile.model, num_turns=1 + len(agent.calls), input_tokens=100,
                          output_tokens=20, notes=notes, tool_calls=[c[0] for c in agent.calls])
 
     async def ask_text(self, prompt: str, profile: str = "classifier") -> str:

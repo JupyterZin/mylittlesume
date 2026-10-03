@@ -155,7 +155,7 @@ class Gateway:
         todays = [r for r in rows if local_date(r.created_at, self.s.timezone) == today]
         cost = sum(r.notional_cost_usd for r in todays)
         rl = self.app.control.rate_limited_until()
-        return (f"Modo: {self.s.auth_mode} · hoje: {len(todays)}/{self.s.daily_run_soft_limit} execuções, "
+        return (f"Modo: {self.s.auth_mode} · hoje: {len(todays)}/{self.s.run_limit} execuções, "
                 f"{sum(r.turns for r in todays)} turnos, custo equivalente ~US$ {cost:.2f} (informativo)"
                 + (f"\nLimite da assinatura até {rl}" if rl else ""))
 

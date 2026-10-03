@@ -76,9 +76,16 @@ async def contacts_save(ctx: ToolContext, a: dict[str, Any]) -> Any:
 
 
 # =============================== Gmail ===============================
-def _flag_suspicious(ctx: ToolContext, msg: dict[str, Any]) -> bool:
-    text = f"{msg.get('subject', '')}\n{msg.get('body', '')}"
-    if not looks_like_injection(text):
+async def is_suspicious(ctx: ToolContext, text: str) -> bool:
+    """Regex OU Sistema 1: qualquer um dos dois marca como suspeito (nunca afrouxa)."""
+    if looks_like_injection(text):
+        return True
+    p = await ctx.app.system1.injection_probability(text) if ctx.app.system1.enabled else None
+    return p is not None and p >= 0.5
+
+
+def _flag_suspicious(ctx: ToolContext, msg: dict[str, Any], suspicious: bool) -> bool:
+    if not suspicious:
         return False
     gm = ctx.app.gmail
     try:
@@ -116,7 +123,10 @@ async def gmail_read_thread(ctx: ToolContext, a: dict[str, Any]) -> Any:
     th = await asyncio.to_thread(gm.get_thread, a["thread_id"])
     parts = []
     for m in th["messages"]:
-        sus = await asyncio.to_thread(_flag_suspicious, ctx, m) if "SENT" not in m.get("labelIds", []) else False
+        sus = False
+        if "SENT" not in m.get("labelIds", []):
+            flagged = await is_suspicious(ctx, f"{m.get('subject', '')}\n{m.get('body', '')}")
+            sus = await asyncio.to_thread(_flag_suspicious, ctx, m, flagged)
         if sus:
             await _warn_suspicious(ctx, m)
         header = f"[{m['date']}] de: {m['from']} · para: {m['to']}" + (f" · cc: {m['cc']}" if m["cc"] else "")
@@ -226,7 +236,8 @@ async def drive_search(ctx: ToolContext, a: dict[str, Any]) -> Any:
 async def drive_read(ctx: ToolContext, a: dict[str, Any]) -> Any:
     dr = _need(ctx.app.drive, "Drive")
     f = await asyncio.to_thread(dr.read, a["file_id"])
-    return wrap(f.get("text", ""), f"drive:{f.get('name', a['file_id'])}")
+    text = f.get("text", "")
+    return wrap(text, f"drive:{f.get('name', a['file_id'])}", suspicious=await is_suspicious(ctx, text))
 
 
 # =============================== tarefas ===============================

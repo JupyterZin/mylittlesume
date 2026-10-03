@@ -46,7 +46,7 @@ class Doctor:
             self.monitor_tick, self.backups, self.pause_state,
         ]
         if self.live:
-            probes += [self.claude_cli, self.telegram, self.google, self.browser, self.novnc]
+            probes += [self.claude_cli, self.telegram, self.google, self.browser, self.novnc, self.system1]
         probes += extra or []
         results = []
         for p in probes:
@@ -59,7 +59,7 @@ class Doctor:
     # ---------- sondas ----------
     async def auth_env(self) -> Check:
         problems = check_auth_env(self.environ, self.s.auth_mode)
-        mode = f"modo de autenticação ativo: {self.s.auth_mode}"
+        mode = f"modo de autenticação ativo: {self.s.auth_mode} · plano: {self.s.claude_plan}"
         if problems:
             return Check("autenticação Claude", FAIL, mode + " · " + "; ".join(problems))
         return Check("autenticação Claude", OK, mode)
@@ -154,6 +154,23 @@ class Doctor:
         except GoogleAuthError as e:
             return Check("Google", FAIL, str(e))
         return Check("Google", OK, f"token válido até {creds.expiry}")
+
+    async def system1(self) -> Check:
+        if self.s.system1 == "off":
+            return Check("Sistema 1 (Jev)", WARN, "desligado (SYSTEM1=off): triagem e roteamento usam o Haiku")
+        if not self.s.typesafe_api_key:
+            return Check("Sistema 1 (Jev)", WARN, "TYPESAFE_API_KEY vazio: triagem e roteamento usam o Haiku")
+        from talos.system1.client import JevClient
+
+        client = JevClient(self.s.typesafe_api_key, base_url=self.s.typesafe_base_url, retries=0)
+        try:
+            models = await client.models()
+        except Exception as e:
+            return Check("Sistema 1 (Jev)", FAIL, f"{self.s.typesafe_base_url}: {e}")
+        finally:
+            await client.aclose()
+        ok = self.s.jev_model in models or self.s.jev_model.endswith("latest")
+        return Check("Sistema 1 (Jev)", OK if ok else WARN, f"modelos: {', '.join(models[:4])}")
 
     async def browser(self) -> Check:
         try:

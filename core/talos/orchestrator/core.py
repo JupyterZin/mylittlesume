@@ -259,10 +259,11 @@ class Orchestrator:
         tz = self.s.timezone
         start = local_to_utc(to_local(utcnow(), tz).replace(hour=0, minute=0, second=0, microsecond=0))
         with self.app.db.session() as s:
-            return int(s.exec(select(func.count(UsageLog.id)).where(col(UsageLog.created_at) >= start)).one())
+            return int(s.exec(select(func.count(UsageLog.id)).where(col(UsageLog.created_at) >= start,
+                                                                    UsageLog.model != "jev")).one())
 
     def _over_daily_limit(self):  # type: ignore[no-untyped-def]
-        n, limit = self.runs_today(), self.s.daily_run_soft_limit
+        n, limit = self.runs_today(), self.s.run_limit
         state = self.app.db.get_state("daily_limit")
         today = local_date(utcnow(), self.s.timezone).isoformat()
         if n >= int(limit * 0.8) and state.get("warned") != today:
@@ -292,6 +293,7 @@ class Orchestrator:
         prompt = f"{prefix}[{conv.channel} · {to_local(msg.created_at, tz):%d/%m %H:%M}] Lucas: {msg.content}"
         req = RunRequest(prompt=prompt, profile="main", resume_session_id=None if rotate else conv.main_session_id,
                          conversation_id=conv.id, user_request=msg.content)
+        await self._route(req, conv.id, msg.content)
         self.app.bus.emit("thinking", {"conversation_id": conv.id}, persist=False)
         res = await self._run_agent(job, req)
         if res is None:
@@ -309,6 +311,26 @@ class Orchestrator:
             self.store_message(conv.id, "assistant", text, {"job_id": job.id})
             await self.app.notifier.reply(conv.channel, conv.external_chat_id, text)
         self.app.bus.emit("idle", {}, persist=False)
+
+    async def _route(self, req: RunRequest, conv_id: int, text: str) -> None:
+        """Sistema 1 escolhe o esforço: conversa leve vai para o Haiku; tarefas ganham uma dica."""
+        if not self.app.system1.enabled:
+            return
+        with self.app.db.session() as s:
+            recent = [m.content[:300] for m in s.exec(select(Message).where(Message.conversation_id == conv_id)
+                                                      .order_by(col(Message.id).desc()).limit(5))][1:]
+        route = await self.app.system1.route_message(text, list(reversed(recent)))
+        if route is None or route.confidence < 0.55:
+            return
+        self.app.bus.emit("route", {"kind": route.kind, "confidence": round(route.confidence, 3)}, persist=False)
+        if route.kind == "conversa":
+            req.model_override = "haiku"
+        elif route.kind == "tarefa":
+            req.system_append = ("O Sistema 1 classificou isto como tarefa de vários passos: mostre um plano curto "
+                                 "e crie-a com task_create.")
+        elif route.kind == "planejamento":
+            req.system_append = ("O Sistema 1 classificou isto como objetivo grande: proponha um plano com marcos "
+                                 "e crie a tarefa com task_create(complex=true) depois do sim do Lucas.")
 
     async def _task_run(self, job: Job) -> None:
         task = self.app.tasks.get(job.task_id)

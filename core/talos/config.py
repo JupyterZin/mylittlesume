@@ -55,12 +55,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=False)
 
     auth_mode: Literal["subscription", "api_key"] = "subscription"
+    claude_plan: Literal["pro", "max5", "max20"] = "pro"
 
     agent_name: str = "Talos"
     timezone: str = "Europe/Lisbon"
     quiet_hours: str = "22:30-08:00"
     max_concurrent_agents: int = Field(default=1, ge=1, le=2)
-    daily_run_soft_limit: int = 60
+    daily_run_soft_limit: int | None = None  # vazio = padrão do plano (pro 30, max5 60, max20 150)
 
     telegram_bot_token: str = ""
     telegram_allowed_chat_id: str = ""
@@ -72,6 +73,12 @@ class Settings(BaseSettings):
     vault_key_file: Path = Path("/etc/talos/vault.key")
     data_dir: Path = Path("/var/lib/talos")
     workspace_dir: Path = Path("/srv/talos/workspace")
+
+    # Sistema 1 (Jev, TypeSafe): julgamentos rápidos que poupam a assinatura do Claude
+    system1: Literal["jev", "off"] = "jev"
+    typesafe_api_key: str = ""
+    typesafe_base_url: str = "https://api.typesafe.ai"
+    jev_model: str = "jev-latest"
 
     browser_cdp_endpoint: str = "http://127.0.0.1:9222"
     mascot_model: str = "/assets/talos.glb"
@@ -100,6 +107,21 @@ class Settings(BaseSettings):
 
     # ---- derivados ----
     @property
+    def run_limit(self) -> int:
+        if self.daily_run_soft_limit:
+            return self.daily_run_soft_limit
+        return {"pro": 30, "max5": 60, "max20": 150}[self.claude_plan]
+
+    @property
+    def planner_model(self) -> str:
+        """No plano Pro o Opus no Claude Code é escasso: o planejamento usa Sonnet."""
+        return "sonnet" if self.claude_plan == "pro" else "opus"
+
+    @property
+    def system1_enabled(self) -> bool:
+        return self.system1 == "jev" and bool(self.typesafe_api_key)
+
+    @property
     def db_path(self) -> Path:
         return self.data_dir / "talos.db"
 
@@ -121,7 +143,7 @@ class Settings(BaseSettings):
 
     def secret_values(self) -> list[str]:
         """Valores que nunca podem aparecer em logs."""
-        vals = [self.telegram_bot_token, os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")]
+        vals = [self.telegram_bot_token, self.typesafe_api_key, os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")]
         return [v for v in vals if v and len(v) >= 8]
 
 

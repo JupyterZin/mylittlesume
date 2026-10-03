@@ -53,6 +53,7 @@ class RunRequest:
     job_id: int | None = None
     user_request: str = ""  # pedido original do Lucas (para o classificador)
     system_append: str = ""
+    model_override: str | None = None  # escolhido pelo Sistema 1 (ex.: haiku para conversa leve)
 
 
 @dataclass
@@ -82,3 +83,13 @@ class AgentRuntime(Protocol):
         ...
 
     def extra_info(self) -> dict[str, Any]: ...
+
+
+def resolve_profile(name: str, settings: Any) -> Profile:
+    """Ajusta o perfil ao plano da assinatura (ex.: planner usa Sonnet no plano Pro)."""
+    from dataclasses import replace
+
+    p = PROFILES[name]
+    if name == "planner":
+        p = replace(p, model=settings.planner_model)
+    return p

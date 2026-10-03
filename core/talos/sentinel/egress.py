@@ -159,3 +159,15 @@ def _covered_by_authorized(hit: EgressHit, vault_hits: list[EgressHit], allowed:
     return any(
         vh.key in allowed and _PATTERN_FOR_KEY.get(vh.key or "") == hit.kind for vh in vault_hits
     )
+
+
+def mask_personal(text: str) -> str:
+    """Substitui padrões de dados pessoais por rótulos antes de enviar texto a um terceiro."""
+    if not text:
+        return text
+    text = CARD_RE.sub(lambda m: "[cartao]" if luhn_valid(m.group(1)) else m.group(0), text)
+    text = IBAN_RE.sub(lambda m: "[iban]" if iban_valid(m.group(1)) else m.group(0), text)
+    text = NIF_RE.sub(lambda m: "[nif]" if nif_valid(m.group(1)) else m.group(0), text)
+    text = PHONE_RE.sub("[telefone]", text)
+    text = INTL_PHONE_RE.sub("[telefone]", text)
+    return POSTAL_RE.sub("[codigo-postal]", text)
