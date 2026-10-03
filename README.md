@@ -11,7 +11,7 @@ Agente pessoal do Lucas, no estilo do Muse da Meta, com o **Claude como cérebro
 | F2 | Google, Sentinela, aprovações, executor, cofre | ✅ no servidor (email real enviado após aprovação) |
 | F3 | Monitor do Gmail, follow-ups, inbox `+talos`, briefing, reflexão, organização semanal | ✅ resposta → aviso → continuação; ⏳ confirmar briefing, follow-up e `+talos` no uso real |
 | F4 | Navegador real + Tela + takeover | ✅ no servidor (preencher, submeter, assumir/devolver pelo celular) |
-| F5 | App PWA + mascote + notificações do app | ✅ no celular; ⏳ instalar como app e mostrar as poses no Telegram |
+| F5 | App PWA + mascote + notificações do app | ✅ no celular, instalado como app; ⏳ poses do mascote no Telegram |
 | F6–F9 | **v2**: conversas por assunto, fotos e documentos, memória visível, objetivos, aprovações com escopo, voz, ensinar uma tarefa | 📝 planejado em [docs/PLANO-V2.md](docs/PLANO-V2.md) |
 | F7 | Endurecimento: teste de restauração, simulação de alertas | ⬜ |
 

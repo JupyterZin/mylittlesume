@@ -15,13 +15,11 @@
 - **Branch de trabalho:** `claude/new-session-biws5d`. Faça push sempre para ele. **Não abrir PR** sem o Lucas pedir.
 - **Último commit relevante:** documentação final + plano v2 (ver `git log`).
 - **Testes:** 240 Python (`make test`) + 42 vitest (`make app-test`), todos verdes em 2026-10-03.
-- **Em curso:** nada a meio. O próximo passo é o Lucas confirmar o briefing das 08:30 e a instalação do PWA, e depois escolher por onde começar o v2 (F6a "Assuntos" é a recomendação).
+- **Em curso:** nada a meio. O PWA já está instalado no celular. O próximo passo é o Lucas confirmar o briefing das 08:30 e depois começar o v2 (F6a "Assuntos" é a recomendação).
 
 ## 2. Próximas ações (por ordem)
 
-1. Perguntar ao Lucas:
-   - o briefing de 2026-10-04 às 08:30 chegou?
-   - o app ficou instalado na tela inicial?
+1. Perguntar ao Lucas: o briefing de 2026-10-04 às 08:30 chegou? (O PWA já está instalado ✅.)
 2. Responder às 4 perguntas do `docs/PLANO-V2.md` §6. Cada uma tem um padrão, então dá para avançar sem a resposta.
 3. **F6a · Assuntos** (`docs/PLANO-V2.md`, E1): ADR primeiro, depois o modelo de dados com migração, o roteador Jev, o ledger por assunto, o orçamento de sessão, a UI e o Telegram.
 4. Depois: F6b fotos → F6c memória → F6d objetivos + MCP → F7 → F8 → F9.
@@ -125,3 +123,4 @@
   - poder mandar fotos;
   - criar este ledger;
   - rever Muse, dots e Grok Bot. Resultado em `docs/PLANO-V2.md`, só plano.
+- Depois do plano v2: o Lucas confirmou que **o app está instalado como PWA** no celular. F5 no servidor só fica à espera das poses do mascote no Telegram.

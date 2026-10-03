@@ -55,7 +55,7 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 
 ### F5 · App PWA + mascote (agente em paralelo, ADR-021)
 - ✅ 6 páginas (Conversa, Tarefas, Aprovações, Agenda, Tela, Ajustes), mascote 3D RobotExpressive em bronze com os 15 estados, `prefers-reduced-motion`, fallback 2D, PIN, ditado por voz; API e WS tipado; 41 testes Python + 28 vitest; `npm run build` sem erros.
-- ✅ [servidor] app no celular via Tailscale HTTPS, aprovar pelo app, notificações do app. ⏳ instalar como app (ícone na tela inicial).
+- ✅ [servidor] app no celular via Tailscale HTTPS, aprovar pelo app, notificações do app, instalado como app (PWA).
 - ⬜ Renders das poses no Telegram (os PNGs já existem em `app/public/`).
 
 ### Instalação na VPS (Hostinger KVM 2, Ubuntu 24.04)
@@ -70,7 +70,7 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ Web Push (notificações do próprio app) e WebSocket com sinal de vida — [offline] 238 testes Python + 42 vitest; ✅ **no celular do Lucas** (Android/Chrome): mensagens aparecem no app e as notificações do app chegam.
 - ✅ **F4 no servidor — formulário real**: pedido pela conversa → tarefa abre a página → **um** cartão "Aprovar e partilhar" (`vault_fill` com 4 campos) → campos preenchidos na Tela → "agora submete" chega à tarefa (`task_continue`) → cartão "Aprovar e submeter" → mensagem de sucesso. Corrigido pelo caminho: a conversa principal não tem navegador e agora encaminha para a tarefa; o Talos não recarrega páginas já preenchidas nem mostra caminhos do servidor.
 - ✅ **Takeover no servidor**: pedido de senha e cartão → o Talos não digita → 🖐️ "Preciso que você assuma a Tela" → o Lucas assumiu a Tela pelo celular, digitou valores falsos e devolveu ao Talos.
-- ⏳ Instalação como PWA.
+- ✅ **App instalado como PWA** no celular do Lucas (ícone Talos na tela inicial).
 
 ### Documentação final (2026-10-03)
 - ✅ `README.md` (visão geral, estado, mapa da documentação), `docs/GUIA.md` (manual de uso do Lucas), `docs/ARQUITETURA.md` (componentes, fluxos, dados, mapa do código), `docs/RUNBOOK.md` atualizado (atualizar o servidor, `talos secrets set`, cofre, Tela, problemas já vistos).
@@ -82,7 +82,7 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 
 ## Próxima sessão (por onde começar)
 > A ordem atualizada fica em `LEDGER.md` → "Próximas ações". A lista abaixo é a do fecho da F5.
-1. **Confirmar com o Lucas**: o briefing das 08:30 chegou? O app ficou instalado na tela inicial (passo 4)?
+1. **Confirmar com o Lucas**: o briefing das 08:30 chegou? (O app já está instalado na tela inicial ✅.)
 2. **Verificações F3 no uso real**, sem testes artificiais, à medida que acontecerem:
    - uma auto-resposta → aviso silencioso;
    - um follow-up proposto depois de 3 dias úteis;
