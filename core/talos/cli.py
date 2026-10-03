@@ -14,6 +14,13 @@ from talos.config import get_settings
 app = typer.Typer(help="Talos — agente pessoal do Lucas", no_args_is_help=True, add_completion=False)
 vault_app = typer.Typer(help="Cofre: dados pessoais e segredos (valores nunca aparecem no terminal)")
 app.add_typer(vault_app, name="vault")
+secrets_app = typer.Typer(help="Variáveis do /etc/talos/secrets.env (tokens); valores nunca aparecem no terminal")
+app.add_typer(secrets_app, name="secrets")
+
+SECRETS_FILE = "/etc/talos/secrets.env"
+SECRET_KEYS = {"CLAUDE_CODE_OAUTH_TOKEN", "TYPESAFE_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_CHAT_ID",
+               "GMAIL_ADDRESS", "ALLOWED_TAILSCALE_LOGINS", "APP_PIN", "CLAUDE_PLAN", "SYSTEM1"}
+NOT_SECRET = {"TELEGRAM_ALLOWED_CHAT_ID", "GMAIL_ADDRESS", "ALLOWED_TAILSCALE_LOGINS", "CLAUDE_PLAN", "SYSTEM1"}
 
 
 def _db():  # type: ignore[no-untyped-def]
@@ -87,6 +94,61 @@ def vault_delete(key: str) -> None:
     if not typer.confirm(f"Apagar {key} do cofre?"):
         raise typer.Exit(1)
     typer.echo("Apagado." if _vault().delete(key) else "Não existia.")
+
+
+def write_env_value(path: str, key: str, value: str) -> None:
+    """Atualiza (ou acrescenta) KEY=valor mantendo dono e permissões do ficheiro."""
+    import os
+    import tempfile
+    from pathlib import Path
+
+    if "\n" in value or "\r" in value:
+        raise ValueError("o valor não pode ter quebras de linha")
+    p = Path(path)
+    lines = p.read_text().splitlines() if p.exists() else []
+    out, done = [], False
+    for line in lines:
+        if line.split("=", 1)[0].strip() == key and not line.lstrip().startswith("#"):
+            if not done:
+                out.append(f"{key}={value}")
+                done = True
+            continue
+        out.append(line)
+    if not done:
+        out.append(f"{key}={value}")
+    st = p.stat() if p.exists() else None
+    fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".secrets.")
+    with os.fdopen(fd, "w") as f:
+        f.write("\n".join(out) + "\n")
+    os.chmod(tmp, 0o600)
+    if st is not None and os.geteuid() == 0:
+        os.chown(tmp, st.st_uid, st.st_gid)
+    os.replace(tmp, p)
+
+
+@secrets_app.command("set")
+def secrets_set(key: str, file: str = typer.Option(SECRETS_FILE, help="Ficheiro de segredos")) -> None:
+    """Grava uma variável no secrets.env sem eco. Ex.: talos secrets set CLAUDE_CODE_OAUTH_TOKEN"""
+    key = key.strip().upper()
+    if key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        typer.echo(f"{key} é proibida em AUTH_MODE=subscription (faria o uso ser cobrado por token).")
+        raise typer.Exit(1)
+    if key not in SECRET_KEYS:
+        typer.echo(f"Chave desconhecida. Use uma de: {', '.join(sorted(SECRET_KEYS))}")
+        raise typer.Exit(1)
+    if key in NOT_SECRET:
+        value = input(f"Valor para {key}: ").strip()
+    else:
+        value = getpass.getpass(f"Cole o valor de {key} (não aparece enquanto cola) e Enter: ").strip()
+        if getpass.getpass("Cole de novo para confirmar: ").strip() != value:
+            typer.echo("Os valores não coincidem. Nada foi gravado.")
+            raise typer.Exit(1)
+    if not value:
+        typer.echo("Valor vazio. Nada foi gravado.")
+        raise typer.Exit(1)
+    write_env_value(file, key, value)
+    shown = value if key in NOT_SECRET else f"{len(value)} caracteres"
+    typer.echo(f"✅ {key} gravado ({shown}). Reinicie o core para aplicar: systemctl restart talos-core")
 
 
 @app.command("google-auth")

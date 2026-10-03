@@ -45,6 +45,7 @@ fi
 chown talos:talos /etc/talos/vault.key && chmod 0600 /etc/talos/vault.key
 
 as_talos bash -c 'set -a; . /etc/talos/secrets.env; set +a; /opt/talos/core/.venv/bin/talos migrate'
+install -m 0755 "$REPO_DIR/infra/scripts/talos-wrapper.sh" /usr/local/bin/talos  # atalho: `talos doctor` etc.
 
 if [[ $RESTART -eq 1 ]] && command -v systemctl >/dev/null && [[ -d /run/systemd/system ]]; then
   systemctl restart talos-core.service

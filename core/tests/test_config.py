@@ -51,3 +51,29 @@ def test_env_example_is_systemd_safe_and_loads(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     s = Settings()
     assert s.run_limit == 30 and s.claude_plan == "pro" and s.organize_time == "09:00"
+
+
+def test_write_env_value_updates_in_place(tmp_path):
+    import os
+    import stat
+
+    from talos.cli import write_env_value
+
+    f = tmp_path / "secrets.env"
+    f.write_text("# comentário\nCLAUDE_CODE_OAUTH_TOKEN=\nAGENT_NAME=Talos\n")
+    os.chmod(f, 0o600)
+    write_env_value(str(f), "CLAUDE_CODE_OAUTH_TOKEN", "sk-ant-oat01-abc")
+    write_env_value(str(f), "TYPESAFE_API_KEY", "apikey_x")
+    text = f.read_text()
+    assert "CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-abc\n" in text and text.count("CLAUDE_CODE_OAUTH_TOKEN") == 1
+    assert "TYPESAFE_API_KEY=apikey_x" in text and "# comentário" in text and "AGENT_NAME=Talos" in text
+    assert stat.S_IMODE(f.stat().st_mode) == 0o600
+
+
+def test_secrets_set_refuses_api_key(tmp_path):
+    from typer.testing import CliRunner
+
+    from talos.cli import app
+
+    r = CliRunner().invoke(app, ["secrets", "set", "ANTHROPIC_API_KEY", "--file", str(tmp_path / "s.env")])
+    assert r.exit_code == 1 and "proibida" in r.output
