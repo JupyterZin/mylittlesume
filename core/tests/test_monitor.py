@@ -131,3 +131,37 @@ def _triage(text):
     async def s(_agent):
         return text
     return s
+
+
+async def test_ghost_draft_in_history_does_not_block_reply(h):
+    """Regressão (servidor real): o histórico do Gmail tinha um rascunho intermédio já apagado (404) e o
+    monitor falhava em todos os tiques, sem nunca chegar à resposta da empresa."""
+    mon, tid = await sent_thread(h)
+    h.gmail.add_ghost_history()  # rascunho substituído pelo update_draft/send_draft
+    h.gmail.add_ghost_history(labels=["DRAFT"])
+    h.rt.on(lambda r: r.profile == "triage", _triage('{"classe": "resposta", "resumo": "Ligação confirmada."}'))
+    h.gmail.deliver(sender=EMPRESA, subject="Re: Pedido de ligação de gás natural", body="Ligação confirmada.",
+                    thread_id=tid)
+    stats = await mon.tick()
+    assert stats["replies"] == 1
+    await h.drain()
+    assert any("📬 Resposta de" in t for t in h.tg.texts())
+
+
+async def test_transient_error_retries_without_losing_reply(h, monkeypatch):
+    mon, tid = await sent_thread(h)
+    h.rt.on(lambda r: r.profile == "triage", _triage('{"classe": "resposta", "resumo": "ok"}'))
+    m = h.gmail.deliver(sender=EMPRESA, subject="Re: gás", body="Resposta.", thread_id=tid)
+    real = h.gmail.get_message
+    calls = {"n": 0}
+
+    def flaky(mid):
+        if mid == m["id"] and calls["n"] == 0:
+            calls["n"] += 1
+            raise RuntimeError("HTTP 500")
+        return real(mid)
+
+    monkeypatch.setattr(h.gmail, "get_message", flaky)
+    assert (await mon.tick())["replies"] == 0  # falhou de passagem
+    assert (await mon.tick())["replies"] == 1  # e não se perdeu
+    assert (await mon.tick())["replies"] == 0  # nem se repete

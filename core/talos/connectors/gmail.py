@@ -11,6 +11,10 @@ class HistoryExpired(Exception):
     """startHistoryId expirado (HTTP 404): fazer ressincronização completa."""
 
 
+class MessageNotFound(Exception):
+    """A mensagem já não existe (ex.: rascunho intermédio substituído/enviado)."""
+
+
 class GmailAPI(Protocol):
     def profile(self) -> dict[str, Any]: ...
     def search(self, query: str, max_results: int = 10) -> list[dict[str, Any]]: ...
@@ -68,7 +72,15 @@ class GoogleGmail:
         return [self.get_message(m["id"]) for m in res.get("messages", [])]
 
     def get_message(self, msg_id: str) -> dict[str, Any]:
-        return normalize_message(self.svc.users().messages().get(userId="me", id=msg_id, format="full").execute())
+        from googleapiclient.errors import HttpError
+
+        try:
+            raw = self.svc.users().messages().get(userId="me", id=msg_id, format="full").execute()
+        except HttpError as e:
+            if getattr(e, "status_code", None) == 404 or e.resp.status == 404:
+                raise MessageNotFound(msg_id) from e
+            raise
+        return normalize_message(raw)
 
     def get_thread(self, thread_id: str) -> dict[str, Any]:
         t = self.svc.users().threads().get(userId="me", id=thread_id, format="full").execute()

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 from sqlmodel import col, select
 
 from talos.clock import add_business_days, as_utc, utcnow
-from talos.connectors.gmail import HistoryExpired
+from talos.connectors.gmail import HistoryExpired, MessageNotFound
 from talos.connectors.mime import addresses
 from talos.db.models import Job, Schedule, Watch
 from talos.logging import get_logger
@@ -65,15 +65,28 @@ class GmailMonitor:
             await self.resync()
             return
         seen: list[str] = list(st.get("seen", []))
+        transient_failure = False
         for rec in records:
             if rec["id"] in seen:
                 continue
+            if "DRAFT" in (rec.get("labelIds") or []):
+                seen.append(rec["id"])  # rascunhos nunca são respostas
+                continue
+            try:
+                kind = await self._route(rec)
+            except MessageNotFound:
+                kind = None  # já não existe (rascunho intermédio): ignora para sempre
+            except Exception as e:  # falha passageira: tenta de novo no próximo tique, sem bloquear as outras
+                log.warning("monitor_message_failed", message_id=rec["id"], error=str(e)[:200])
+                transient_failure = True
+                continue
             seen.append(rec["id"])
             stats["new"] += 1
-            kind = await self._route(rec)
             if kind:
                 stats[kind] += 1
-        self.app.db.set_state(STATE, {"history_id": new_hid, "seen": seen[-SEEN_MAX:]})
+        # com falha passageira não avançamos o historyId (os já vistos não se repetem graças a `seen`)
+        next_hid = st["history_id"] if transient_failure else new_hid
+        self.app.db.set_state(STATE, {"history_id": next_hid, "seen": seen[-SEEN_MAX:]})
 
     async def resync(self) -> None:
         """historyId expirou: relê as threads vigiadas e recomeça do historyId atual."""
@@ -161,7 +174,10 @@ class GmailMonitor:
     # ================= jobs =================
     async def handle_triage(self, job: Job) -> None:
         p = job.payload_json
-        msg = await asyncio.to_thread(self.app.gmail.get_message, p["message_id"])
+        try:
+            msg = await asyncio.to_thread(self.app.gmail.get_message, p["message_id"])
+        except MessageNotFound:
+            return
         with self.app.db.session() as s:
             w = s.get(Watch, int(p["watch_id"]))
         classe = triage.deterministic(msg)

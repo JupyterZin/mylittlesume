@@ -7,7 +7,7 @@ from datetime import datetime
 from email.message import EmailMessage
 from typing import Any
 
-from talos.connectors.gmail import HistoryExpired
+from talos.connectors.gmail import HistoryExpired, MessageNotFound
 from talos.connectors.mime import addresses, build_message, from_raw
 
 
@@ -86,7 +86,17 @@ class FakeGmail:
         return out
 
     def get_message(self, msg_id: str) -> dict[str, Any]:
+        if msg_id not in self.messages:
+            raise MessageNotFound(msg_id)
         return self._norm(self.messages[msg_id])
+
+    def add_ghost_history(self, labels: list[str] | None = None) -> str:
+        """Simula o Gmail real: o histórico regista rascunhos intermédios que depois deixam de existir."""
+        gid = self._new_id("ghost")
+        hid = next(self._hid)
+        self.history_id = str(hid)
+        self._history.append((hid, {"id": gid, "threadId": "t-ghost", "labelIds": labels or []}))
+        return gid
 
     def get_thread(self, thread_id: str) -> dict[str, Any]:
         msgs = [self._norm(r) for r in self.messages.values() if r["threadId"] == thread_id]
