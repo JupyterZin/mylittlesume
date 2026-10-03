@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from talos.connectors.google_lock import serialized
 from talos.connectors.mime import headers_map, text_from_payload
 
 
@@ -57,6 +58,7 @@ def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+@serialized
 class GoogleGmail:
     def __init__(self, creds: Any) -> None:
         from googleapiclient.discovery import build

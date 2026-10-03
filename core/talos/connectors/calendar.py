@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
+from talos.connectors.google_lock import serialized
+
 
 class CalendarAPI(Protocol):
     def list_events(self, time_min: datetime, time_max: datetime) -> list[dict[str, Any]]: ...
@@ -27,6 +29,7 @@ def free_slots(events: list[dict[str, Any]], start: datetime, end: datetime,
     return slots
 
 
+@serialized
 class GoogleCalendar:
     def __init__(self, creds: Any, calendar_id: str = "primary") -> None:
         from googleapiclient.discovery import build

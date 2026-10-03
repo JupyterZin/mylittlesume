@@ -67,8 +67,11 @@ def load_credentials(vault: Vault) -> Any:
         raise GoogleAuthError("sem token Google no cofre (rode `talos google-auth`)")
     creds = Credentials.from_authorized_user_info(json.loads(raw), SCOPES)
     if not creds.valid:
+        from talos.connectors.google_lock import GOOGLE_LOCK
+
         try:
-            creds.refresh(Request())
+            with GOOGLE_LOCK:
+                creds.refresh(Request())
         except RefreshError as e:
             raise GoogleAuthError(f"renovação do token Google falhou: {e}") from e
         vault.set(TOKEN_KEY, creds.to_json())

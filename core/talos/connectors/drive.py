@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from talos.connectors.google_lock import serialized
+
 EXPORTS = {
     "application/vnd.google-apps.document": "text/plain",
     "application/vnd.google-apps.spreadsheet": "text/csv",
@@ -16,6 +18,7 @@ class DriveAPI(Protocol):
     def read(self, file_id: str, max_chars: int = 20000) -> dict[str, Any]: ...
 
 
+@serialized
 class GoogleDrive:
     def __init__(self, creds: Any) -> None:
         from googleapiclient.discovery import build
