@@ -160,7 +160,7 @@ export const useStore = create<Store>((set, get) => ({
   refreshState: async () => {
     try {
       const app = await api.state()
-      set({ app, auth: 'ok', mascot: get().reaction ? { ...app.mascot } : app.mascot })
+      set({ app, auth: 'ok', mascot: app.mascot })
     } catch (e) {
       handleAuthError(e, set)
     }

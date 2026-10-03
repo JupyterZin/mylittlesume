@@ -45,8 +45,11 @@ export function connect(): void {
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'auth', pin: getPin() ?? '' }))
     attempt = 0
-    useStore.getState().setConn('open')
-    if (everOpened) void useStore.getState().refreshAll()
+    const s = useStore.getState()
+    s.setConn('open')
+    // o servidor estava fora no arranque (o service worker serviu o app): arranca agora
+    if (s.auth === 'offline') void s.boot()
+    else if (everOpened) void s.refreshAll()
     everOpened = true
   }
   ws.onmessage = (msg) => {
