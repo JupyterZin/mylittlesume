@@ -66,7 +66,9 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ **Google no servidor**: projeto "Talos" no Google Cloud (Gmail, Calendar, Drive), cliente OAuth Desktop, branding com página inicial e política de privacidade no GitHub Pages (`docs/index.html`, `docs/privacidade.html`), `talos google-auth` pelo celular. `talos doctor` todo ✅ (Claude, Telegram, Google, navegador, Tela, Jev, monitor).
 - ✅ Cofre com 5 `dados.*` (via `talos vault set`), primeiro backup (`talos-backup.service`).
 - ✅ **F2 no servidor — caso âncora real**: pedido no Telegram → plano → cartão de aprovação → "Aprovar e enviar" → email entregue em `+empresa-teste` (Lucas confirmou).
-- ⏳ F3 no servidor: resposta manual na thread → notificação com resumo (em teste). Tela pelo app, instalação como PWA.
+- ✅ **F3 no servidor**: resposta manual na thread → 📬 com resumo (Jev) → o Talos retomou o assunto, leu a thread, consultou a agenda e respondeu no Telegram. Bugs reais encontrados e corrigidos: rascunhos intermédios (404) bloqueavam o histórico do Gmail; `httplib2` partilhado entre threads (SSL); eventos sem tarefa morriam em silêncio (agora voltam à conversa principal).
+- ✅ Web Push (notificações do próprio app) e WebSocket com sinal de vida — [offline] 238 testes Python + 42 vitest; ⏳ ativar no celular.
+- ⏳ Tela pelo app, instalação como PWA.
 
 ### Próximas
 - ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.

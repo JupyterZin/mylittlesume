@@ -195,3 +195,44 @@ async def test_sync_pause_approved_in_time(h):
     assert len(clicks) == 1
     with h.app.db.session() as s:
         assert s.exec(select(PendingAction)).one().status == "executed"
+
+
+async def test_fast_approval_while_card_is_being_sent_counts_once(h, monkeypatch):
+    """Corrida: o Lucas aprova enquanto o cartão/screenshot ainda saem. A decisão tem de chegar à pausa
+    síncrona (clique feito uma vez) — e não cair no caminho 'pausa expirada' (concessão + retomada)."""
+    page = '- button "Submeter pedido" [ref=e2]\n'
+    clicks = []
+
+    async def nav(args):
+        return page
+
+    async def click(args):
+        clicks.append(args)
+        return "ok"
+
+    h.rt.external_tools[PW + "browser_navigate"] = nav
+    h.rt.external_tools[PW + "browser_click"] = click
+    h.rt.pause_seconds = 5
+    real_send_card = h.app.notifier.send_card
+
+    async def send_card_and_lucas_taps_immediately(action, **kw):
+        res = await real_send_card(action, **kw)
+        await h.tap(f"ap:{action.id}:a")  # decisão chega antes de o gate começar a esperar
+        return res
+
+    monkeypatch.setattr(h.app.notifier, "send_card", send_card_and_lucas_taps_immediately)
+
+    async def flow(agent):
+        await agent.call(PW + "browser_navigate", {"url": "http://127.0.0.1:9000/form"})
+        return await agent.call(PW + "browser_click", {"element": "Submeter pedido", "target": "e2"})
+
+    h.rt.on(lambda r: r.task_id is not None, flow)
+    t = _task(h)
+    await h.drain()
+    assert len(clicks) == 1
+    with h.app.db.session() as s:
+        a = s.exec(select(PendingAction)).one()
+        assert a.status == "executed" and not a.result_json.get("granted")
+    assert h.app.queue.counts().get("queued", 0) == 0  # nenhuma retomada extra da tarefa
+    assert h.sentinel._grants == {} or all(v == 0 for v in h.sentinel._grants.values())
+    _ = t

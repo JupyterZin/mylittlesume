@@ -278,12 +278,18 @@ class Approvals:
                     conversation_id=(action.payload_json or {}).get("_conversation_id"), event=message)
 
     # ================= pausa síncrona (navegador) =================
-    async def wait_for(self, action_id: int, timeout: float) -> str:
-        loop = asyncio.get_running_loop()
-        fut: asyncio.Future[str] = loop.create_future()
+    def expect(self, action_id: int) -> asyncio.Future[str]:
+        """Regista quem espera pela decisão ANTES de o cartão sair: uma decisão rápida (enquanto o
+        cartão ou o screenshot ainda estão a ser enviados) chega sempre a este waiter, em vez de cair no
+        caminho "pausa já expirou" (que concederia a ação e retomaria a tarefa → ação em dobro)."""
+        fut: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self._waiters[action_id] = fut
+        return fut
+
+    async def wait_for(self, action_id: int, timeout: float, fut: asyncio.Future[str] | None = None) -> str:
+        fut = fut or self.expect(action_id)
         try:
-            return await asyncio.wait_for(fut, timeout)
+            return await asyncio.wait_for(asyncio.shield(fut), timeout)
         except TimeoutError:
             return "timeout"
         finally:

@@ -103,3 +103,11 @@ Formato: **contexto → decisão → consequência**. Divergências entre o SPEC
 - **Rotas:** a página Tela vive em `/navegador` (o `tailscale serve` manda `/tela` para o noVNC); `/tela` no Telegram aponta para `/navegador`.
 - **WebSocket com PIN:** navegadores não mandam cabeçalhos no WS → com `APP_PIN`, a primeira mensagem tem de ser `{"type":"auth","pin":…}` (senão fecha com 4401; 4403 para a allowlist Tailscale).
 - **Cofre pelo app:** só escrita; chaves novas só `dados.*`; cada escrita gera evento `vault_updated` (só a chave). Memória editada no app fica com origem `dito`.
+
+## ADR-022 · Notificações do próprio app (Web Push)
+- **Decisão:** `pywebpush` com chave VAPID crua de 32 bytes criada no primeiro uso e guardada no cofre como segredo `webpush.vapid_private` (apagá-la revoga todos os aparelhos). Tabela `push_subscriptions` (migração `0002`), rotas `/api/push/{key,subscribe,test}`, service worker com `push-sw.js` importado. Só serviços de push conhecidos (FCM, Mozilla, WNS, Apple); no máximo 10 aparelhos.
+- **Quando sai:** nos mesmos momentos que o Telegram (horas de silêncio incluídas). Cartões: urgência alta, TTL 12 h, tag `ap-<id>`, abrem `/aprovacoes/<id>`, **sem botão de aprovar** (o Lucas vê sempre o cartão completo). Respostas diretas só vão por push quando a conversa é do app e nenhuma janela do app está visível (o app reporta presença pelo WebSocket a cada 25 s).
+- **Privacidade:** conteúdo cifrado ponta a ponta (o FCM vê só tamanho/hora), passado pelo redator e cortado (60/180 caracteres); cartões só com um resumo. Os resumos aparecem no ecrã de bloqueio.
+- **`NOTIFY_CHANNELS`** (`telegram,app` por omissão): com `app`, o Telegram fica só como chat.
+- **Corrida corrigida (pausa síncrona):** o gate regista quem espera pela decisão **antes** de enviar o cartão; uma aprovação muito rápida já não cai no caminho "pausa expirada" (que concederia e retomaria → ação em dobro).
+- **WebSocket com sinal de vida** a cada 20 s; o app reconecta se ficar 45 s sem notícias e busca tudo ao voltar ao primeiro plano (o Android congela o PWA e deixa o socket morto).

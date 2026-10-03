@@ -29,6 +29,7 @@
 - **Heurística de injeção**: baseada em padrões; não apanha tudo. A defesa principal é estrutural (propor ≠ executar; destinatários conhecidos; egress).
 - **Processo único**: o executor vive no mesmo processo que o runtime. O modelo não tem ferramentas para chegar a ele, mas uma falha de execução remota de código no processo daria acesso. Mitigação: `NoNewPrivileges`, `ProtectSystem=strict`, sem Bash, usuário `talos` sem sudo.
 - **Sistema 1 (Jev, terceiro)**: para triar e classificar, assunto/remetente/trechos de emails e o texto das mensagens do Lucas saem para a API da TypeSafe (já sem valores do cofre nem números pessoais). Para desligar: `SYSTEM1=off` (volta ao Haiku).
+- **Notificações do app (Web Push)**: o conteúdo vai cifrado ponta a ponta (o serviço de push do Google vê só tamanho e hora), mas os resumos aparecem no ecrã de bloqueio do celular. Cartões de aprovação levam só um resumo e não têm botão de aprovar. Revogar todos os aparelhos: `talos vault delete webpush.vapid_private`.
 - **Perfil do navegador logado**: sessões abertas nos sites (feitas pelo Lucas por takeover) ficam no perfil persistente. Quem controlar o servidor controla essas sessões.
 - **Tela (noVNC)**: acessível a qualquer dispositivo da tailnet do Lucas, protegida por senha VNC gerada no bootstrap.
 

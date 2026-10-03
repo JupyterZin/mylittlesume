@@ -87,6 +87,7 @@ class ToolGate:
         title = ""
         if self.req.task_id and (t := self.app.tasks.get(self.req.task_id)):
             title = t.title
+        decision = self.app.approvals.expect(action.id)  # antes do cartão: nenhuma decisão rápida se perde
         await self.app.notifier.send_card(action, task_title=title)
         if screenshot:
             for ch in self.app.channels.values():
@@ -94,7 +95,7 @@ class ToolGate:
                     await ch.send_photo(self.app.notifier.owner_chat, screenshot, f"Proposta #{action.id}")
                 except Exception:
                     pass
-        status = await self.app.approvals.wait_for(action.id, self.pause_seconds)
+        status = await self.app.approvals.wait_for(action.id, self.pause_seconds, fut=decision)
         if status == "approved":
             self.app.approvals.mark_executed(action.id, {"sync": True})
             return True, ""
