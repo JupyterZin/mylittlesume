@@ -162,7 +162,7 @@ def validate_subscription(endpoint: str, p256dh: str, auth: str) -> None:
     u = urlparse(endpoint or "")
     host = (u.hostname or "").lower()
     if u.scheme != "https" or not host:
-        raise PushError("endpoint de push inválido (tem de ser https)")
+        raise PushError("endpoint de push inválido (precisa ser https)")
     if not any(host == s or host.endswith("." + s) for s in PUSH_HOST_SUFFIXES):
         raise PushError(f"serviço de push não reconhecido: {host}")
     if len(endpoint) > 2048:
@@ -225,7 +225,7 @@ class WebPushSender:
                     self._vapid = Vapid.from_raw(raw.strip().encode())
                 except Exception as e:
                     raise RuntimeError(f"chave VAPID inválida no cofre ({VAPID_KEY}); apague-a para gerar "
-                                       "outra (os aparelhos terão de ligar as notificações de novo)") from e
+                                       "outra (os aparelhos vão precisar ligar as notificações de novo)") from e
             return self._vapid
 
     def public_key(self) -> str:
@@ -371,7 +371,7 @@ class AppPresence:
     """Clientes do app ligados por WebSocket e se estão visíveis no ecrã.
 
     O app manda `{"type": "presence", "visible": …}` ao abrir, ao mudar de visibilidade e a cada
-    sinal de vida (20 s). Só conta como visível com um aviso recente: o Android congela o app em
+    25 s. Só conta como visível com um aviso recente: o Android congela o app em
     segundo plano sem fechar o socket.
     """
 

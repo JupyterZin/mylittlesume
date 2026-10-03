@@ -11,7 +11,7 @@ WebSocket `/ws` com eventos tipados:
 - `mascot_state`       → estado do mascote calculado no servidor (`channels/mascot.py`).
 Com PIN configurado, a primeira mensagem do cliente tem de ser `{"type": "auth", "pin": "…"}`.
 O cliente manda `{"type": "presence", "visible": bool}` ao abrir, ao mudar de visibilidade e a cada
-sinal de vida: o notifier só manda push de respostas quando nenhum app está visível.
+25 s: o notifier só manda push de respostas quando nenhum app está visível.
 
 Web Push: `GET /api/push/key` (chave VAPID pública), `POST|DELETE /api/push/subscribe`, `POST /api/push/test`.
 """
