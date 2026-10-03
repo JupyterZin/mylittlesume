@@ -225,7 +225,7 @@ async def test_messages_roundtrip(h2: Harness) -> None:
         assert r.json() == {"ok": True, "answer": None}
         assert c.post("/api/messages", json={"text": ""}).status_code == 422
         msgs = c.get("/api/messages").json()
-        assert msgs[-1]["role"] == "user" and msgs[-1]["content"] == "olá"
+        assert msgs[-1]["role"] == "user" and msgs[-1]["content"] == "olá" and msgs[-1]["channel"] == "app"
         assert len(c.get("/api/messages", params={"limit": 1}).json()) == 1
 
 

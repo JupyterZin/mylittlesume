@@ -34,6 +34,7 @@ from talos.channels.cards import RISK, VERB, render
 from talos.channels.mascot import MascotContext, MascotMapper
 from talos.clock import as_utc, in_quiet_hours, local_date, local_to_utc, to_local, utcnow
 from talos.db.models import (
+    Conversation,
     Goal,
     MemoryFact,
     Message,
@@ -259,7 +260,8 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
     def messages(limit: int = Query(default=100, ge=1, le=500), _: str = Depends(auth)) -> list[dict[str, Any]]:
         with app.db.session() as ss:
             rows = list(ss.exec(select(Message).order_by(col(Message.id).desc()).limit(limit)))
-        return [r.model_dump(mode="json") for r in reversed(rows)]
+            channels = {c.id: c.channel for c in ss.exec(select(Conversation))}
+        return [{**r.model_dump(mode="json"), "channel": channels.get(r.conversation_id, "")} for r in reversed(rows)]
 
     @api.post("/api/messages")
     async def say(body: Say, _: str = Depends(auth)) -> dict[str, Any]:

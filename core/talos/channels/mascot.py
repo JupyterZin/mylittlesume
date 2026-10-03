@@ -116,6 +116,7 @@ class MascotMapper:
                 out = self._payload(state, now, once=True, base=base, gesture=gesture, extra=extra,
                                     task_id=event.get("task_id"))
                 self._last = self._payload(base, now, once=False, base=base)
+                out["base_status"] = self._last["status"]  # o que mostrar quando a reação acabar
                 return out
         out = self._payload(base, now, once=False, base=base)
         key = ("state", "status", "task_id")

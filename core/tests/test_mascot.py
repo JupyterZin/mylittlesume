@@ -118,6 +118,7 @@ def test_approval_yes_then_thumbs_up_and_dedupe(w: World) -> None:
     w.pending = 0
     out = m.feed(ev("approval_decided", 7, action_id=1, decision="approved", via="app"))
     assert out["state"] == "approved" and out["once"] and out["gesture"] == "Yes" and out["base"] == "idle"
+    assert out["base_status"] == "Pronto quando você quiser."
     w.tick(2)
     out = m.feed(ev("action_executed", 7, action_id=1, kind="email.send"))
     assert out["state"] == "approved" and out["gesture"] is None
