@@ -163,10 +163,8 @@ class GmailMonitor:
                     w.followups_sent += 1
                     w.next_check_at = add_business_days(now, bd, self.s.timezone)
                 s.add(w)
-                if w.task_id:
-                    self.app.queue.enqueue("agent.task_run", {"event": event}, task_id=w.task_id,
-                                           dedupe_key=f"followup:{w.id}:{'fim' if exhausted else w.followups_sent}")
-                    self.app.bus.emit("followup_due", {"watch_id": w.id, "n": w.followups_sent}, task_id=w.task_id)
+                self._resume(w, event, dedupe_key=f"followup:{w.id}:{'fim' if exhausted else w.followups_sent}")
+                self.app.bus.emit("followup_due", {"watch_id": w.id, "n": w.followups_sent}, task_id=w.task_id)
                 n += 1
             s.commit()
         return n
@@ -223,9 +221,14 @@ class GmailMonitor:
             event = (f"Resposta recebida na thread {w.target} (mensagem {msg['id']}, classe: {classe}). "
                      "Use a skill acompanhar-resposta: leia a thread, atualize a tarefa e, se for preciso responder, "
                      "prepare rascunho e propose_action(kind='email.reply').")
-        if w.task_id:
-            self.app.tasks.update(w.task_id, status="running")
-            self.app.queue.enqueue("agent.task_run", {"event": event}, task_id=w.task_id)
+        self._resume(w, event)
+
+    def _resume(self, w: Watch, event: str, dedupe_key: str | None = None) -> None:
+        from talos.resume import resume_work
+
+        resume_work(queue=self.app.queue, tasks=self.app.tasks, db=self.app.db, task_id=w.task_id,
+                    conversation_id=(w.followup_policy_json or {}).get("conversation_id"), event=event,
+                    dedupe_key=dedupe_key)
 
     async def handle_inbox(self, job: Job) -> None:
         msg = await asyncio.to_thread(self.app.gmail.get_message, job.payload_json["message_id"])

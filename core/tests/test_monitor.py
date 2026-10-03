@@ -165,3 +165,46 @@ async def test_transient_error_retries_without_losing_reply(h, monkeypatch):
     assert (await mon.tick())["replies"] == 0  # falhou de passagem
     assert (await mon.tick())["replies"] == 1  # e não se perdeu
     assert (await mon.tick())["replies"] == 0  # nem se repete
+
+
+async def test_reply_resumes_main_conversation_when_no_task(h):
+    """Regressão (servidor real): a conversa principal fez tudo sem task_create; quando a empresa
+    respondeu, o Talos notificava o 📬 e depois ficava calado, porque só sabia retomar tarefas."""
+    from tests.test_anchor_case import BODY
+
+    async def main_does_everything(agent):
+        if "[evento do sistema" in agent.req.prompt:
+            seen_events.append(agent.req)
+            if "Resposta recebida" in agent.req.prompt:
+                return "A empresa pede o código CUI. Quer que eu responda com ele?"
+            return "—"
+        d = await agent.call("mcp__talos__gmail_create_draft", {"to": [EMPRESA], "subject": "Pedido de gás",
+                                                                "body": BODY})
+        did = d.split("draft_id=")[1].split()[0]
+        await agent.call("mcp__talos__propose_action", {"kind": "email.send", "reason": "indicado pelo Lucas",
+                                                        "payload": {"draft_id": did, "to": [EMPRESA],
+                                                                    "subject": "Pedido de gás", "body": BODY}})
+        return "Preparei o email; está no cartão para aprovar."
+
+    seen_events = []
+    h.rt.on(lambda r: r.profile == "main", main_does_everything)
+    h.rt.on(lambda r: r.profile == "triage", _triage('{"classe": "pede_informacao", "resumo": "Pedem o CUI."}'))
+    await h.say(f"Fala com a Empresa Teste para ligar o gás. O email é {EMPRESA}")
+    await h.drain()
+    [a] = h.app.approvals.list_pending()
+    assert a.task_id is None and a.payload_json["_conversation_id"]
+    await h.tap(f"ap:{a.id}:a")
+    await h.drain()
+    tid = h.gmail.sent[0]["threadId"]
+    mon = GmailMonitor(h.app, h.orch)
+    h.orch.register("agent.triage", mon.handle_triage)
+    await mon.tick()
+    h.gmail.deliver(sender=EMPRESA, subject="Re: Pedido de gás", body="Precisamos do código CUI.", thread_id=tid)
+    await mon.tick()
+    await h.drain()
+    assert any("executada" in r.prompt for r in seen_events)  # soube que o email saiu
+    reply_evt = [r for r in seen_events if "Resposta recebida" in r.prompt]
+    assert reply_evt and reply_evt[0].resume_session_id  # mesma sessão da conversa, com o contexto
+    texts = h.tg.texts()
+    assert any(t.startswith("📬") for t in texts)
+    assert texts[-1] == "A empresa pede o código CUI. Quer que eu responda com ele?"

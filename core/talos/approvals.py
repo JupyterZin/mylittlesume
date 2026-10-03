@@ -272,10 +272,10 @@ class Approvals:
         return DecideResult(False, f"Decisão desconhecida: {decision}", action)
 
     def _resume(self, action: PendingAction, message: str) -> None:
-        if action.task_id is None:
-            return
-        self.tasks.update(action.task_id, status="running")
-        self.queue.enqueue("agent.task_run", {"event": message}, task_id=action.task_id)
+        from talos.resume import resume_work
+
+        resume_work(queue=self.queue, tasks=self.tasks, db=self.db, task_id=action.task_id,
+                    conversation_id=(action.payload_json or {}).get("_conversation_id"), event=message)
 
     # ================= pausa síncrona (navegador) =================
     async def wait_for(self, action_id: int, timeout: float) -> str:

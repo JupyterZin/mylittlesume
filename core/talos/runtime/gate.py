@@ -77,7 +77,8 @@ class ToolGate:
                 log.warning("screenshot_failed", error=str(e))
         summary = self._summary(name, inp, d) + (f"\nPágina: {page_url}" if page_url else "")
         payload = {"summary": summary, "tool": name, "input": _redact_input(inp), "_fingerprint": call.fingerprint(),
-                   "_data_keys": data_keys, "screenshot": screenshot, "_host": urlparse(page_url).hostname or ""}
+                   "_data_keys": data_keys, "screenshot": screenshot, "_host": urlparse(page_url).hostname or "",
+                   "_conversation_id": self.req.conversation_id}
         try:
             action = self.app.approvals.create(task_id=self.req.task_id, kind=kind, payload=payload,
                                                preview=summary, reason=d.reason)

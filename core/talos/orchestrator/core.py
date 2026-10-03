@@ -22,10 +22,11 @@ if TYPE_CHECKING:
 
 log = get_logger("talos.orchestrator")
 
-AGENT_KINDS = ("agent.main_turn", "agent.task_run", "agent.triage", "agent.schedule", "agent.inbox",
-               "agent.briefing", "agent.reflection")
+AGENT_KINDS = ("agent.main_turn", "agent.main_event", "agent.task_run", "agent.triage", "agent.schedule",
+               "agent.inbox", "agent.briefing", "agent.reflection")
 OTHER_KINDS = ("executor.run", "notify.send", "approval.card", "gmail.organize")
-BACKGROUND_AGENT_KINDS = ("agent.task_run", "agent.triage", "agent.schedule", "agent.inbox", "agent.reflection")
+BACKGROUND_AGENT_KINDS = ("agent.task_run", "agent.main_event", "agent.triage", "agent.schedule", "agent.inbox",
+                          "agent.reflection")
 
 
 class Orchestrator:
@@ -37,6 +38,7 @@ class Orchestrator:
         self._sem = asyncio.Semaphore(self.s.max_concurrent_agents)
         self._handlers = {
             "agent.main_turn": self._main_turn,
+            "agent.main_event": self._main_event,
             "agent.task_run": self._task_run,
             "agent.schedule": self._schedule_run,
             "executor.run": self._executor_run,
@@ -283,17 +285,35 @@ class Orchestrator:
         with self.app.db.session() as s:
             conv = s.get(Conversation, p["conversation_id"])
             msg = s.get(Message, p["message_id"])
+        stamp = to_local(msg.created_at, self.s.timezone).strftime("%d/%m %H:%M")
+        await self._run_main(job, conv, f"[{conv.channel} · {stamp}] Lucas: {msg.content}", msg.content,
+                             from_user=True)
+
+    async def _main_event(self, job: Job) -> None:
+        """Evento sem tarefa (ex.: a empresa respondeu a um email proposto no chat): volta à conversa."""
+        p = job.payload_json
+        with self.app.db.session() as s:
+            conv = s.get(Conversation, p["conversation_id"])
+        if conv is None:
+            return
+        stamp = to_local(utcnow(), self.s.timezone).strftime("%d/%m %H:%M")
+        prompt = (f"[evento do sistema · {stamp}] {p['event']}\n"
+                  "Continue este assunto. Fale com o Lucas só se houver algo para ele saber ou decidir; "
+                  "se não houver, responda só '—'.")
+        await self._run_main(job, conv, prompt, p["event"], from_user=False)
+
+    async def _run_main(self, job: Job, conv: Conversation, prompt: str, user_request: str, *,
+                        from_user: bool) -> None:
         tz = self.s.timezone
         today = local_date(utcnow(), tz)
         rotate = conv.main_session_id is None or conv.session_started_at is None or \
             local_date(conv.session_started_at, tz) != today
-        prefix = ""
         if rotate and conv.main_session_id is not None:
-            prefix = self._rotation_context(conv) + "\n\n"
-        prompt = f"{prefix}[{conv.channel} · {to_local(msg.created_at, tz):%d/%m %H:%M}] Lucas: {msg.content}"
+            prompt = self._rotation_context(conv) + "\n\n" + prompt
         req = RunRequest(prompt=prompt, profile="main", resume_session_id=None if rotate else conv.main_session_id,
-                         conversation_id=conv.id, user_request=msg.content)
-        await self._route(req, conv.id, msg.content)
+                         conversation_id=conv.id, user_request=user_request)
+        if from_user:
+            await self._route(req, conv.id, user_request)
         self.app.bus.emit("thinking", {"conversation_id": conv.id}, persist=False)
         res = await self._run_agent(job, req)
         if res is None:
@@ -307,9 +327,13 @@ class Orchestrator:
             s.add(c)
             s.commit()
         text = res.text or ("Tive um problema a processar isso: " + res.error if res.is_error else "")
-        if text:
-            self.store_message(conv.id, "assistant", text, {"job_id": job.id})
-            await self.app.notifier.reply(conv.channel, conv.external_chat_id, text)
+        text = text.strip()
+        if text and text not in ("—", "-"):
+            if from_user:
+                self.store_message(conv.id, "assistant", text, {"job_id": job.id})
+                await self.app.notifier.reply(conv.channel, conv.external_chat_id, text)
+            elif "notified" not in res.notes:
+                await self.app.notifier.notify(text)  # iniciativa do Talos (horas de silêncio); o notifier regista
         self.app.bus.emit("idle", {}, persist=False)
 
     async def _route(self, req: RunRequest, conv_id: int, text: str) -> None:

@@ -303,7 +303,8 @@ async def watch_create(ctx: ToolContext, a: dict[str, Any]) -> Any:
         if existing:
             return f"Já vigio isto (vigilância #{existing.id})."
         w = Watch(task_id=ctx.task_id, kind=a["kind"], target=a["target"],
-                  followup_policy_json={"business_days": bd, "max": min(int(a.get("max_followups") or 2), 2)},
+                  followup_policy_json={"business_days": bd, "max": min(int(a.get("max_followups") or 2), 2),
+                                        "conversation_id": ctx.conversation_id},
                   next_check_at=add_business_days(utcnow(), bd, st.timezone))
         s.add(w)
         s.commit()
@@ -383,7 +384,8 @@ async def propose_action(ctx: ToolContext, a: dict[str, Any]) -> Any:
     from talos.approvals import ProposalError
 
     try:
-        action = ctx.app.approvals.create(task_id=ctx.task_id, kind=a["kind"], payload=a["payload"],
+        payload = {**(a["payload"] or {}), "_conversation_id": ctx.conversation_id}
+        action = ctx.app.approvals.create(task_id=ctx.task_id, kind=a["kind"], payload=payload,
                                           preview=a.get("preview", ""), reason=a.get("reason", ""))
     except ProposalError as e:
         raise ToolError(str(e)) from e

@@ -172,7 +172,8 @@ class Executor:
                 w = Watch(task_id=action.task_id, kind="email_thread", target=thread_id, last_marker=last_msg,
                           followup_policy_json={"business_days": bd,
                                                 "max": int(policy.get("max", self.s.max_followups))
-                                                if isinstance(policy, dict) else self.s.max_followups},
+                                                if isinstance(policy, dict) else self.s.max_followups,
+                                                "conversation_id": action.payload_json.get("_conversation_id")},
                           next_check_at=nxt)
             else:
                 w.last_marker, w.next_check_at = last_msg, nxt
@@ -198,10 +199,12 @@ class Executor:
 
     # ---------------- comum ----------------
     def _resume(self, action: PendingAction, message: str) -> None:
-        if action.task_id is None:
-            return
-        self.tasks.update(action.task_id, status="running")
-        self.queue.enqueue("agent.task_run", {"event": message}, task_id=action.task_id)
+        from talos.resume import resume_work
+
+        if action.kind == "email.organize":
+            return  # organização semanal: o cartão de resultado basta, nenhum agente precisa de acordar
+        resume_work(queue=self.queue, tasks=self.tasks, db=self.db, task_id=action.task_id,
+                    conversation_id=(action.payload_json or {}).get("_conversation_id"), event=message)
 
     @staticmethod
     def _done_text(action: PendingAction, result: dict[str, Any]) -> str:
