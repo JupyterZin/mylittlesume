@@ -22,9 +22,10 @@ if TYPE_CHECKING:
 
 log = get_logger("talos.orchestrator")
 
-AGENT_KINDS = ("agent.main_turn", "agent.task_run", "agent.triage", "agent.schedule")
+AGENT_KINDS = ("agent.main_turn", "agent.task_run", "agent.triage", "agent.schedule", "agent.inbox",
+               "agent.briefing", "agent.reflection")
 OTHER_KINDS = ("executor.run", "notify.send", "approval.card")
-BACKGROUND_AGENT_KINDS = ("agent.task_run", "agent.triage", "agent.schedule")
+BACKGROUND_AGENT_KINDS = ("agent.task_run", "agent.triage", "agent.schedule", "agent.inbox", "agent.reflection")
 
 
 class Orchestrator:
@@ -313,8 +314,12 @@ class Orchestrator:
             return
         t = self.app.tasks.settle_after_run(task.id)
         text = (res.text or "").strip()
-        if text and text not in ("—", "-") and "notified" not in res.notes:
-            await self.app.notifier.notify(f"Tarefa #{task.id} · {t.title}\n{text}", task_id=task.id)
+        plan = task.plan_json or {}
+        if plan.get("max_lines"):
+            text = "\n".join(text.splitlines()[: int(plan["max_lines"])])
+        if text and text not in ("—", "-") and "notified" not in res.notes and plan.get("notify", True):
+            header = f"Tarefa #{task.id} · {t.title}\n" if plan.get("header", True) else ""
+            await self.app.notifier.notify(header + text, task_id=task.id)
         if t.status == "done":
             self.app.bus.emit("task_done", {"title": t.title}, task_id=task.id)
         self.app.bus.emit("idle", {}, persist=False)

@@ -69,3 +69,9 @@ Formato: **contexto → decisão → consequência**. Divergências entre o SPEC
 
 ## ADR-015 · Conversa principal por canal, tarefas partilhadas
 - **Decisão:** seguir o SPEC (uma conversa principal por canal), mas tarefas, aprovações e notificações são globais: o cartão de aprovação sai no Telegram **e** no app; a resposta final de uma tarefa vai para o canal de origem.
+
+## ADR-016 · Monitor do Gmail
+- **Decisão:** polling `users.history.list` (só `messageAdded`) a cada `MONITOR_INTERVAL_SECONDS`; ids já vistos guardados (últimos 500) para não processar duas vezes; `historyId` expirado (404) → ressincronização a partir do `last_marker` de cada vigilância. Ignorados: rascunhos, mensagens com `Message-ID` `<talos-…>`, o próprio email enviado (= `last_marker`) e mensagens só com `SENT`. Mensagens com `SENT`+`INBOX` contam (é o caso do teste E2E, em que o Lucas responde "como a empresa" para o próprio plus-address).
+- **Triagem:** determinística primeiro (cabeçalho `Auto-Submitted`, assunto de auto-resposta, heurística de injeção) e só depois Haiku — auto-respostas não gastam LLM nem fazem som.
+- **Follow-ups:** contam quando são **propostos** (no máximo 2); depois disso a tarefa é retomada para sugerir canal alternativo e a vigilância deixa de ter prazo (respostas continuam a ser detectadas).
+- **Briefing/reflexão:** recorrências semeadas uma vez em `schedules`; o briefing recebe um bloco de dados determinístico e é cortado em 8 linhas; a reflexão não notifica (escreve o diff em `memoria/`).

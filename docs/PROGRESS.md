@@ -31,7 +31,14 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ [offline] caso âncora até "enviado" com FakeGmail; recusar não envia; editar → `superseded`; toque duplo não duplica; placeholders só no envio; cofre fora dos logs; suíte de injeção (4 casos + takeover + pausa síncrona).
 - ⏳ [servidor] caso âncora real para `<gmail>+empresa-teste@gmail.com` aprovado pelo Telegram.
 
+### F3 · Monitor + follow-ups + inbox do agente + briefing
+- ✅ `monitor/gmail_watch.py`: History API, ressincronização, triagem determinística + Haiku, follow-ups em dias úteis PT, inbox `+talos`, briefing 08:30 / reflexão 23:00, alertas (monitor parado, `invalid_grant`).
+- ✅ [offline] resposta na thread → notificação com resumo + tarefa retomada; auto-resposta silenciosa e sem LLM; suspeito rotulado; 2 follow-ups e depois canal alternativo; `historyId` expirado recupera a resposta; email para `+talos` vira tarefa; briefing ≤ 8 linhas.
+- ⏳ [servidor] resposta manual do Lucas na thread de teste → notificação em ≤ 5 min; briefing às 08:30.
+
+### Verificação real do Agent SDK (sem chamar o modelo)
+- ✅ `tests/smoke_handshake.py`: o CLI arranca com as opções reais; servidor MCP `talos` conectado (23 ferramentas na conversa, 24 nas tarefas); hooks aplicados; modo de permissão `default`.
+
 ### Próximas
-- ⬜ F3: `monitor/gmail_watch.py` (History API), triagem Haiku, follow-ups, inbox `+talos`, briefing e reflexão.
 - ⬜ F4: `vault_fill` real via CDP, screenshot para o cartão, página de formulário de teste, takeover/devolver.
 - ⬜ F5: PWA + mascote. ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.

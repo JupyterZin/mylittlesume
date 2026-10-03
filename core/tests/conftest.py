@@ -95,14 +95,11 @@ def make_harness(settings: Settings, db: Database, key: bytes) -> Harness:
 
 @pytest.fixture
 def h(tmp_settings: Settings, db: Database, monkeypatch: pytest.MonkeyPatch) -> Harness:
-    from talos import clock
-
     # meio-dia em Lisboa: fora das horas de silêncio, para os testes não dependerem da hora real
     from datetime import UTC, datetime
 
     fixed = datetime(2026, 10, 7, 11, 0, tzinfo=UTC)
     monkeypatch.setattr("talos.channels.notifier.utcnow", lambda: fixed)
-    _ = clock
     key = Fernet.generate_key()
     harness = make_harness(tmp_settings, db, key)
     v = harness.app.vault
