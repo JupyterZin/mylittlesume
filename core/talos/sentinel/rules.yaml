@@ -10,7 +10,8 @@
 #   input_flag: {chave: valor}       → ex.: {submit: true}
 #   key_regex                        → browser_press_key.key
 #   path_outside_workspace: true     → Read/Write/Edit/Glob/Grep fora do workspace
-# Nomes das ferramentas do Playwright MCP confirmados no pacote @playwright/mcp 0.0.83.
+# Nomes e parâmetros das ferramentas do Playwright MCP confirmados contra o @playwright/mcp 0.0.83 real
+# (tests/test_browser.py, teste `slow`). Refs vêm como e12 ou, depois de navegar, f4e12.
 
 default: ask
 
@@ -40,6 +41,10 @@ rules:
     match: { tool_in: ["mcp__playwright__browser_evaluate", "mcp__playwright__browser_run_code_unsafe"] }
     decision: deny
     reason: "executar JavaScript na página contorna a Sentinela"
+  - id: no-page-tools
+    match: { tool_prefix: "mcp__playwright__webmcp_" }
+    decision: deny
+    reason: "ferramenta registada pela própria página (WebMCP): código da página, não confiável"
 
   # --- ficheiros: só dentro do workspace ---
   - id: files-outside-workspace
@@ -94,13 +99,14 @@ rules:
     decision: ask
     reason: "digitar com Enter pode submeter o formulário"
   - id: browser-enter
-    match: { tool: "mcp__playwright__browser_press_key", key_regex: "^(enter|return)$" }
+    # confirmado no MCP real: Enter, NumpadEnter, Shift+Enter e Espaço (num botão focado) submetem
+    match: { tool: "mcp__playwright__browser_press_key", key_regex: "^(.*\\+)?(numpad)?(enter|return)$|^(.*\\+)?( |space(bar)?)$" }
     decision: ask
-    reason: "Enter pode submeter o formulário"
+    reason: "Enter ou Espaço podem submeter o formulário ou ativar o botão focado"
   - id: browser-upload
-    match: { tool: "mcp__playwright__browser_file_upload" }
+    match: { tool_in: ["mcp__playwright__browser_file_upload", "mcp__playwright__browser_drop"] }
     decision: ask
-    reason: "enviar ficheiro para um site"
+    reason: "enviar ficheiro ou dados para um site (upload ou arrastar e largar)"
   - id: browser-other
     match: { tool_prefix: "mcp__playwright__browser_" }
     decision: allow
