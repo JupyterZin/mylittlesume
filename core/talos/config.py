@@ -1,0 +1,135 @@
+"""Configuração do Talos (pydantic-settings) + verificação de variáveis proibidas.
+
+Em AUTH_MODE=subscription, ANTHROPIC_API_KEY e ANTHROPIC_AUTH_TOKEN não podem existir no
+ambiente: se existirem, o Claude Code passa a cobrar por token. O startup e o `talos doctor`
+abortam nesse caso (SPEC §2.2).
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Mapping
+from datetime import time
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+FORBIDDEN_IN_SUBSCRIPTION = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+
+
+class ForbiddenEnvError(RuntimeError):
+    pass
+
+
+def check_auth_env(environ: Mapping[str, str], auth_mode: str) -> list[str]:
+    """Devolve a lista de problemas de autenticação (vazia = ok)."""
+    problems: list[str] = []
+    if auth_mode == "subscription":
+        for name in FORBIDDEN_IN_SUBSCRIPTION:
+            if environ.get(name):
+                problems.append(f"{name} está definida; em AUTH_MODE=subscription ela é proibida")
+        if not environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+            problems.append("CLAUDE_CODE_OAUTH_TOKEN ausente (rode `claude setup-token`)")
+    elif auth_mode == "api_key":
+        if not environ.get("ANTHROPIC_API_KEY"):
+            problems.append("AUTH_MODE=api_key exige ANTHROPIC_API_KEY")
+    else:
+        problems.append(f"AUTH_MODE desconhecido: {auth_mode!r}")
+    return problems
+
+
+def enforce_auth_env(environ: Mapping[str, str] | None = None, auth_mode: str | None = None) -> None:
+    environ = os.environ if environ is None else environ
+    auth_mode = auth_mode or environ.get("AUTH_MODE", "subscription")
+    forbidden = [
+        p for p in check_auth_env(environ, auth_mode) if "proibida" in p or "desconhecido" in p
+    ]
+    if forbidden:
+        raise ForbiddenEnvError("; ".join(forbidden))
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=False)
+
+    auth_mode: Literal["subscription", "api_key"] = "subscription"
+
+    agent_name: str = "Talos"
+    timezone: str = "Europe/Lisbon"
+    quiet_hours: str = "22:30-08:00"
+    max_concurrent_agents: int = Field(default=1, ge=1, le=2)
+    daily_run_soft_limit: int = 60
+
+    telegram_bot_token: str = ""
+    telegram_allowed_chat_id: str = ""
+
+    gmail_address: str = ""
+    agent_inbox_tag: str = "talos"
+    google_oauth_client_file: Path = Path("/etc/talos/google_client.json")
+
+    vault_key_file: Path = Path("/etc/talos/vault.key")
+    data_dir: Path = Path("/var/lib/talos")
+    workspace_dir: Path = Path("/srv/talos/workspace")
+
+    browser_cdp_endpoint: str = "http://127.0.0.1:9222"
+    mascot_model: str = "/assets/talos.glb"
+    sentinel_classifier: bool = True
+
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+    app_pin: str = ""
+    allowed_tailscale_logins: str = ""  # vírgula; vazio = só PIN/local
+
+    # Prazos (encurtáveis em teste)
+    approval_ttl_hours: int = 48
+    approval_reminder_hours: int = 24
+    followup_business_days: int = 3
+    max_followups: int = 2
+    monitor_interval_seconds: int = 180
+    briefing_time: str = "08:30"
+    reflection_time: str = "23:00"
+
+    @field_validator("sentinel_classifier", mode="before")
+    @classmethod
+    def _on_off(cls, v: object) -> object:
+        if isinstance(v, str) and v.lower() in {"on", "off"}:
+            return v.lower() == "on"
+        return v
+
+    # ---- derivados ----
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "talos.db"
+
+    @property
+    def db_url(self) -> str:
+        return f"sqlite:///{self.db_path}"
+
+    @property
+    def agent_inbox_address(self) -> str:
+        if not self.gmail_address or "@" not in self.gmail_address:
+            return ""
+        local, domain = self.gmail_address.split("@", 1)
+        return f"{local}+{self.agent_inbox_tag}@{domain}"
+
+    @property
+    def quiet_window(self) -> tuple[time, time]:
+        start, end = self.quiet_hours.split("-")
+        return _parse_hhmm(start), _parse_hhmm(end)
+
+    def secret_values(self) -> list[str]:
+        """Valores que nunca podem aparecer em logs."""
+        vals = [self.telegram_bot_token, os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")]
+        return [v for v in vals if v and len(v) >= 8]
+
+
+def _parse_hhmm(s: str) -> time:
+    h, m = s.strip().split(":")
+    return time(int(h), int(m))
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
