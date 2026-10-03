@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Armadilhas · Sentinela</title>
+<!-- Elementos "disfarçados" para verificar o SnapshotIndex da Sentinela contra snapshots ARIA reais do
+     Playwright MCP: o texto que importa está depois de ":" ou em filhos, não no nome do elemento. -->
+<style>
+  body { font: 16px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; max-width: 560px; }
+  .botao { display: inline-block; padding: 8px 12px; border: 1px solid #888; border-radius: 6px; cursor: pointer; margin: 4px 0; }
+  input { font: inherit; padding: 6px; margin: 4px 0; }
+  #feito { color: #0f7b3f; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>Página com armadilhas</h1>
+  <div class="botao" id="div-finalizar" onclick="feito('finalizar')">Finalizar compra</div>
+  <div class="botao" id="div-aceitar" onclick="feito('aceitar')"><span>Aceitar</span> <small>os termos</small></div>
+  <a href="#ver" id="link-pagar"><span>Pagar</span> <span>agora</span></a>
+  <div role="button" tabindex="0" id="role-confirmar" onclick="feito('confirmar')">Confirmar contrato</div>
+  <button id="icone" aria-label="Encomendar" onclick="feito('encomendar')">🛒</button>
+  <form id="f" onsubmit="event.preventDefault(); feito('submit')">
+    <input id="sem-rotulo" type="password" placeholder="Palavra-passe">
+    <input id="pin" type="password" aria-label="Chave de acesso">
+    <input id="busca" type="text" placeholder="Pesquisar: produtos, serviços">
+  </form>
+  <iframe title="Pagamento" srcdoc="<label>Número do cartão <input id='cc' autocomplete='cc-number'></label><button>Pagar 10 €</button>"></iframe>
+  <p id="feito" role="status"></p>
+<script>
+  function feito(o) { document.getElementById("feito").textContent = "feito: " + o; }
+</script>
+</body>
+</html>

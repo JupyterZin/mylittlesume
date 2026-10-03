@@ -405,21 +405,30 @@ async def vault_list_keys(ctx: ToolContext, a: dict[str, Any]) -> Any:
     return ("Chaves: " + ", ".join(keys)) if keys else "O cofre ainda não tem dados pessoais."
 
 
-@talos_tool("vault_fill", "Preenche um campo do navegador com um valor do cofre (ex.: dados.nif). Exige "
-            "aprovação do Lucas; o valor nunca passa por você.",
-            {"selector": S, "key": S, "field_description": S}, ["selector", "key", "field_description"],
-            profiles=("task", "planner"))
+@talos_tool("vault_fill", "Preenche um campo do navegador (na aba em que você está) com um valor do cofre "
+            "(ex.: dados.nif). Exige aprovação do Lucas; o valor nunca passa por você. `selector` = o RÓTULO "
+            "visível do campo (ex.: 'NIF'), o placeholder, ou um seletor CSS (ex.: '#nif'). Refs do snapshot "
+            "(e12, f4e12) NÃO funcionam aqui. Campos de senha, cartão ou código são recusados (takeover).",
+            {"selector": {"type": "string", "description": "Rótulo visível do campo, placeholder ou seletor CSS"},
+             "key": {"type": "string", "description": "Chave do cofre, ex.: dados.nif (veja vault_list_keys)"},
+             "field_description": {"type": "string", "description": "Que campo é e em que site (vai no cartão)"}},
+            ["selector", "key", "field_description"], profiles=("task", "planner"))
 async def vault_fill(ctx: ToolContext, a: dict[str, Any]) -> Any:
+    from talos.connectors.browser import BrowserError
+
     if not a["key"].startswith("dados."):
         raise ToolError("só dados pessoais (dados.*); segredos nunca são preenchidos pelo agente")
     browser = _need(ctx.app.browser, "Navegador")
     value = ctx.app.vault.get(a["key"])
     if value is None:
         raise ToolError(f"{a['key']} não existe no cofre")
-    await browser.fill(a["selector"], value)
+    try:
+        where = await browser.fill(a["selector"], value)
+    except BrowserError as e:  # mensagem já sem o valor
+        raise ToolError(str(e)) from None
     if ctx.task_id:
         ctx.app.tasks.authorize_data(ctx.task_id, [a["key"]])
-    return f"Campo preenchido com {a['key']}."
+    return f"Campo {where} preenchido com {a['key']}."
 
 
 # --------------------------------------------------------------------------------------------

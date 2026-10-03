@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Empresa Teste · Pedido de ligação</title>
+<!-- Página local da Fase 4 (SPEC §14): o Talos preenche até antes de submeter; submeter exige aprovação.
+     Servida por infra/scripts/testpage.sh em http://127.0.0.1:9000/formulario.html. Sem recursos externos. -->
+<style>
+  :root { --bg: #f6f7f9; --fg: #1d2330; --muted: #5b6475; --card: #fff; --line: #d7dbe3; --ok: #0f7b3f; --accent: #2b5fd9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 20px; }
+  form { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  fieldset { border: 0; margin: 0 0 12px; padding: 0; }
+  legend { font-weight: 600; margin-bottom: 8px; }
+  .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+  label { font-weight: 500; }
+  input { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; width: 100%; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .dica { color: var(--muted); font-size: .85rem; }
+  button { font: inherit; font-weight: 600; padding: 10px 18px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+  #sucesso { margin-top: 16px; padding: 12px; border-radius: 6px; background: #e5f5ec; color: var(--ok); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pedido de ligação de gás</h1>
+  <p class="lead">Empresa Teste, S.A. · formulário de demonstração (nada é enviado para fora desta página).</p>
+
+  <form id="pedido" autocomplete="off" novalidate>
+    <fieldset>
+      <legend>Dados do titular</legend>
+      <div class="campo">
+        <label for="nome">Nome</label>
+        <input id="nome" name="nome" type="text" placeholder="Nome completo">
+      </div>
+      <div class="campo">
+        <label for="nif">NIF</label>
+        <input id="nif" name="nif" type="text" inputmode="numeric" placeholder="Número de identificação fiscal">
+      </div>
+      <div class="campo">
+        <label for="morada">Morada</label>
+        <input id="morada" name="morada" type="text" placeholder="Rua, número, código postal e localidade">
+      </div>
+      <div class="campo">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="nome@exemplo.pt">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Área de cliente e pagamento</legend>
+      <div class="campo">
+        <label for="senha">Palavra-passe</label>
+        <input id="senha" name="senha" type="password" placeholder="Palavra-passe da área de cliente">
+      </div>
+      <div class="campo">
+        <label for="cartao">Número do cartão</label>
+        <input id="cartao" name="cartao" type="text" inputmode="numeric" autocomplete="cc-number"
+               placeholder="0000 0000 0000 0000">
+        <span class="dica">Só para a caução; pode deixar em branco.</span>
+      </div>
+    </fieldset>
+
+    <button type="submit" id="submeter">Submeter pedido</button>
+    <p id="sucesso" role="status" hidden>Pedido submetido com sucesso. Referência: ET-0001.</p>
+  </form>
+</main>
+<script>
+  // Submeter não sai da página: mostra a mensagem de sucesso e regista o envio (para os testes).
+  window.submissoes = [];
+  document.getElementById("pedido").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var dados = Object.fromEntries(new FormData(ev.target).entries());
+    window.submissoes.push(dados);
+    document.getElementById("sucesso").hidden = false;
+  });
+</script>
+</body>
+</html>

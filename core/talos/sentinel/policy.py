@@ -90,21 +90,114 @@ class SnapshotIndex:
 
     Permite à Sentinela avaliar o elemento REAL que vai ser clicado, e não só a descrição que o
     agente escreveu em `element` (que pode ser enganosa).
+
+    Formato real do @playwright/mcp 0.0.83 (capturado; ver tests/test_browser.py):
+
+        - generic [ref=f2e3] [cursor=pointer]: Finalizar compra     ← o texto vem DEPOIS de ":"
+        - 'textbox "Pesquisar: produtos" [ref=f2e11]'               ← YAML entre aspas quando há ": "
+        - link "Pagar agora" [ref=f2e5] [cursor=pointer]:           ← filhos indentados
+          - /url: "#ver"
+        - generic [ref=e7] [cursor=pointer]:                        ← sem nome: o texto está nos filhos
+          - generic [ref=e8]: Aceitar
+        - iframe [ref=f2e12]:                                       ← refs de outros frames: f3e1…
+
+    Por isso o texto de cada ref = papel + nome + texto inline, e um elemento SEM nome nem texto
+    herda o texto dos descendentes (um `div` clicável com "Aceitar" num `span`).
+
+    As ações (navigate, click, type…) NÃO trazem o snapshot inline: o MCP escreve-o num `.yml`
+    e devolve `- [Snapshot](caminho.yml)` (relativo ao cwd do MCP = workspace). O índice lê esse
+    ficheiro, mas só se ele estiver dentro de `allowed_dirs` (o `--output-dir` do MCP).
+    `page_url` guarda o último "- Page URL:" que o MCP reportou (a aba em que ele está a trabalhar).
     """
 
-    LINE_RE = re.compile(r"^\s*-\s*(?P<desc>.*?)\s*\[ref=(?P<ref>(?:f\d+)?e\d+)\]")
+    ITEM_RE = re.compile(r"^(?P<indent>\s*)- (?P<body>.*?)\s*$")
+    KEY_RE = re.compile(r'^(?P<role>/?[\w-]+)(?:\s+(?P<name>"(?:[^"\\]|\\.)*"))?(?P<attrs>(?:\s*\[[^\]]*\])*)'
+                        r'\s*(?::\s*(?P<value>.*))?$')
+    REF_ATTR_RE = re.compile(r"\[ref=(?P<ref>(?:f\d+)?e\d+)\]")
+    LINK_RE = re.compile(r"\[Snapshot\]\((?P<path>[^)\s]+?\.ya?ml)\)")
+    PAGE_URL_RE = re.compile(r"^- Page URL: (?P<url>\S+)\s*$", re.M)
+    MAX_TEXT = 300
+    MAX_FILE = 5_000_000
 
-    def __init__(self) -> None:
+    def __init__(self, base_dir: Path | None = None, allowed_dirs: Iterable[Path] = ()) -> None:
         self._refs: dict[str, str] = {}
+        self.page_url: str | None = None
+        self.base_dir = Path(base_dir) if base_dir else None
+        self.allowed_dirs = [os.path.realpath(d) for d in allowed_dirs]
 
     def ingest(self, text: str) -> None:
-        for line in (text or "").splitlines():
-            m = self.LINE_RE.match(line)
-            if m:
-                self._refs[m.group("ref")] = m.group("desc")[:200]
+        text = text or ""
+        if '\\"' in text:  # resposta serializada em JSON pelo hook PostToolUse
+            text = text.replace('\\"', '"')
+        for m in self.PAGE_URL_RE.finditer(text):
+            self.page_url = m.group("url")
+        self._parse(text)
+        for m in self.LINK_RE.finditer(text):
+            if (content := self._read_linked(m.group("path"))) is not None:
+                self._parse(content)
 
     def lookup(self, ref: str) -> str | None:
         return self._refs.get(ref)
+
+    # ---------- interno ----------
+    def _parse(self, text: str) -> None:
+        stack: list[tuple[int, str, bool]] = []  # (indentação, ref, herda texto dos filhos)
+        for raw in text.splitlines():
+            m = self.ITEM_RE.match(raw)
+            if not m:
+                continue
+            indent = len(m.group("indent").expandtabs())
+            while stack and stack[-1][0] >= indent:
+                stack.pop()
+            body = _yaml_unquote_key(m.group("body"))
+            km = self.KEY_RE.match(body)
+            role, name = (km.group("role"), km.group("name")) if km else ("", None)
+            value = _yaml_unquote_value(km.group("value") or "") if km else ""
+            if role.startswith("/"):  # propriedades (/url, /placeholder): sem rótulo, o placeholder já é o
+                continue                # nome; e "/booking" ou "código postal" dariam falsos positivos
+            ref_m = self.REF_ATTR_RE.search(km.group("attrs") if km else body)
+            if km is None:  # formato inesperado: guarda a linha inteira (sem o ref) como texto
+                own = self.REF_ATTR_RE.sub("", body).strip()
+                informative = bool(own)
+            else:
+                own = role + (f" {name}" if name else "") + (f": {value}" if value else "")
+                informative = bool(name or value)
+            if not ref_m:
+                if informative:  # ex.: "- text: Confirmar" dentro de um elemento sem nome
+                    for _i, anc, inherits in stack:
+                        if inherits:
+                            self._append(anc, own)
+                continue
+            ref = ref_m.group("ref")
+            self._refs[ref] = own[: self.MAX_TEXT]
+            if informative:
+                for _i, anc, inherits in stack:
+                    if inherits:
+                        self._append(anc, own)
+            stack.append((indent, ref, km is not None and not informative))
+
+    def _append(self, ref: str, text: str) -> None:
+        cur = self._refs.get(ref, "")
+        if len(cur) < self.MAX_TEXT:
+            self._refs[ref] = f"{cur} · {text}"[: self.MAX_TEXT] if cur else text[: self.MAX_TEXT]
+
+    def _read_linked(self, path: str) -> str | None:
+        if not self.allowed_dirs:
+            return None
+        p = Path(path)
+        candidates = [p] if p.is_absolute() else ([self.base_dir / p] if self.base_dir else [])
+        candidates += [Path(d) / p.name for d in self.allowed_dirs]  # cwd do MCP diferente do esperado
+        for c in candidates:
+            real = os.path.realpath(c)
+            if not any(real.startswith(d + os.sep) for d in self.allowed_dirs):
+                continue
+            try:
+                if os.path.getsize(real) > self.MAX_FILE:
+                    continue
+                return Path(real).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+        return None
 
 
 @dataclass
@@ -126,6 +219,7 @@ class Sentinel:
         classifier_enabled: bool = True,
         rules_path: Path = RULES_PATH,
         on_decision: Callable[[ToolCall, Decision], Awaitable[None] | None] | None = None,
+        snapshot_dirs: Iterable[Path] = (),
     ) -> None:
         self.workspace_dir = Path(workspace_dir)
         self.vault_values = vault_values
@@ -133,7 +227,8 @@ class Sentinel:
         self.classifier = classifier
         self.classifier_enabled = classifier_enabled
         self.on_decision = on_decision
-        self.snapshots = SnapshotIndex()
+        # snapshot_dirs = `--output-dir` do Playwright MCP (onde ele grava os snapshots das ações)
+        self.snapshots = SnapshotIndex(base_dir=self.workspace_dir, allowed_dirs=snapshot_dirs)
         self._grants: dict[str, int] = {}
         self.load_rules(rules_path)
 
@@ -309,3 +404,32 @@ def tool_allowed(name: str, allowed: Iterable[str]) -> bool:
 def _search(pattern: str, texts: list[str]) -> bool:
     rx = re.compile(pattern, re.I)
     return any(rx.search(t) for t in texts)
+
+
+def _yaml_unquote_key(body: str) -> str:
+    """`'textbox "a: b" [ref=e1]': resto` → `textbox "a: b" [ref=e1]: resto` (aspas simples, '' = ')."""
+    if not body.startswith("'"):
+        return body
+    out, i = [], 1
+    while i < len(body):
+        if body[i] == "'":
+            if body[i + 1:i + 2] == "'":
+                out.append("'")
+                i += 2
+                continue
+            return "".join(out) + body[i + 1:]
+        out.append(body[i])
+        i += 1
+    return "".join(out)
+
+
+def _yaml_unquote_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        try:
+            return str(json.loads(value))
+        except ValueError:
+            return value[1:-1]
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
+    return value

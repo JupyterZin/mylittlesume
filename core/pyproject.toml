@@ -22,6 +22,7 @@ dependencies = [
   "holidays>=0.105",
   "python-dateutil>=2.9",
   "typer>=0.27",
+  "playwright>=1.55",                # só a ligação CDP ao Chromium do talos-browser; sem download de navegador
 ]
 
 [project.scripts]
@@ -46,8 +47,11 @@ packages = ["talos"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-markers = ["e2e: consome a assinatura; rodar só com `make e2e`"]
-addopts = "-m 'not e2e'"
+markers = [
+  "e2e: consome a assinatura; rodar só com `make e2e`",
+  "slow: fala com o Playwright MCP real via npx (sem assinatura); rodar com `pytest -m slow`",
+]
+addopts = "-m 'not e2e and not slow'"
 
 [tool.ruff]
 line-length = 110
