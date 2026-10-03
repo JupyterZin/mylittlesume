@@ -67,7 +67,7 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 - ✅ Cofre com 5 `dados.*` (via `talos vault set`), primeiro backup (`talos-backup.service`).
 - ✅ **F2 no servidor — caso âncora real**: pedido no Telegram → plano → cartão de aprovação → "Aprovar e enviar" → email entregue em `+empresa-teste` (Lucas confirmou).
 - ✅ **F3 no servidor**: resposta manual na thread → 📬 com resumo (Jev) → o Talos retomou o assunto, leu a thread, consultou a agenda e respondeu no Telegram. Bugs reais encontrados e corrigidos: rascunhos intermédios (404) bloqueavam o histórico do Gmail; `httplib2` partilhado entre threads (SSL); eventos sem tarefa morriam em silêncio (agora voltam à conversa principal).
-- ✅ Web Push (notificações do próprio app) e WebSocket com sinal de vida — [offline] 238 testes Python + 42 vitest; ⏳ ativar no celular.
+- ✅ Web Push (notificações do próprio app) e WebSocket com sinal de vida — [offline] 238 testes Python + 42 vitest; ✅ **no celular do Lucas** (Android/Chrome): mensagens aparecem no app e as notificações do app chegam.
 - ⏳ Tela pelo app, instalação como PWA.
 
 ### Próximas
