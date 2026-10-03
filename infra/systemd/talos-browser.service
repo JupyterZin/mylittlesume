@@ -11,11 +11,12 @@ Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/talos/pw-browsers
 ExecStart=/opt/talos/infra/scripts/browser.sh
 Restart=always
 RestartSec=5
+# Sem PrivateTmp: o socket do Xvfb (/tmp/.X11-unix) tem de ser visto pelo talos-novnc.
+# O sandbox do Chromium usa user namespaces (permitidos pelo perfil AppArmor talos-chrome do bootstrap).
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
-PrivateTmp=yes
-ReadWritePaths=/var/lib/talos
+ReadWritePaths=/var/lib/talos /tmp
 MemoryMax=1500M
 
 [Install]

@@ -52,7 +52,8 @@ def enforce_auth_env(environ: Mapping[str, str] | None = None, auth_mode: str | 
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=False)
+    # env_ignore_empty: `DAILY_RUN_SOFT_LIMIT=` (vazio no secrets.env) usa o padrão em vez de falhar
+    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=False, env_ignore_empty=True)
 
     auth_mode: Literal["subscription", "api_key"] = "subscription"
     claude_plan: Literal["pro", "max5", "max20"] = "pro"

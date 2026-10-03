@@ -36,3 +36,18 @@ def test_inbox_address_and_quiet_window():
 def test_classifier_on_off():
     assert Settings(sentinel_classifier="off").sentinel_classifier is False
     assert Settings(sentinel_classifier="on").sentinel_classifier is True
+
+
+def test_env_example_is_systemd_safe_and_loads(monkeypatch):
+    """O systemd não aceita comentários inline; valores vazios usam o padrão."""
+    from pathlib import Path
+
+    env = Path(__file__).resolve().parents[2] / ".env.example"
+    for line in env.read_text().splitlines():
+        if line and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            assert "#" not in value, f"comentário inline em {key}"
+            monkeypatch.setenv(key, value)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    s = Settings()
+    assert s.run_limit == 30 and s.claude_plan == "pro" and s.organize_time == "09:00"

@@ -20,10 +20,10 @@ stage_base() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
   apt-get upgrade -y
-  apt-get install -y unattended-upgrades ca-certificates curl git jq sqlite3 rsync age ufw \
+  apt-get install -y unattended-upgrades ca-certificates curl git jq sqlite3 rsync age ufw sudo tzdata \
     python3.12 python3.12-venv xvfb x11-utils x11vnc novnc websockify fonts-noto fonts-noto-color-emoji
   dpkg-reconfigure -f noninteractive unattended-upgrades || true
-  timedatectl set-timezone Europe/Lisbon
+  timedatectl set-timezone Europe/Lisbon 2>/dev/null || ln -sf /usr/share/zoneinfo/Europe/Lisbon /etc/localtime
 
   log "2/7 Usuário de sistema talos (sem shell de login, sem sudo) e diretórios"
   if ! id talos >/dev/null 2>&1; then
@@ -58,6 +58,20 @@ stage_base() {
   PLAYWRIGHT_BROWSERS_PATH=/opt/talos/pw-browsers npx -y playwright@latest install-deps chromium
   sudo -u talos -H env PLAYWRIGHT_BROWSERS_PATH=/opt/talos/pw-browsers npx -y playwright@latest install chromium
   sudo -u talos -H npx -y "@playwright/mcp@${PW_MCP_VERSION}" --help >/dev/null
+  # Ubuntu 24.04 restringe user namespaces sem privilégio; o sandbox do Chromium precisa deles.
+  # Em vez de --no-sandbox, damos a permissão só a este binário (como o Ubuntu faz para o Chrome).
+  if [[ -d /etc/apparmor.d ]] && command -v apparmor_parser >/dev/null; then
+    cat > /etc/apparmor.d/talos-chrome <<'AA'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile talos-chrome /opt/talos/pw-browsers/chromium-*/chrome-linux*/chrome flags=(unconfined) {
+  userns,
+  include if exists <local/talos-chrome>
+}
+AA
+    apparmor_parser -r /etc/apparmor.d/talos-chrome || echo "AVISO: não carreguei o perfil AppArmor do Chromium"
+  fi
 
   log "5/7 Senha do VNC (a Tela só é acessível pela tailnet, mas não fica aberta)"
   if [[ ! -f /etc/talos/vnc.pass ]]; then
@@ -71,6 +85,10 @@ stage_base() {
   "$REPO_DIR/infra/scripts/deploy.sh" --no-restart
 
   log "7/7 Serviços systemd"
+  if [[ ! -d /run/systemd/system ]]; then
+    echo "Sem systemd (contêiner de teste?): serviços não instalados."
+    return 0
+  fi
   install -m 0644 "$REPO_DIR"/infra/systemd/talos-*.service "$REPO_DIR"/infra/systemd/talos-*.timer /etc/systemd/system/
   systemctl daemon-reload
   systemctl enable talos-browser.service talos-novnc.service talos-core.service talos-backup.timer
