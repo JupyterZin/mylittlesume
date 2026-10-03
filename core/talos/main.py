@@ -34,6 +34,7 @@ async def amain() -> None:
     from talos.channels.gateway import Gateway
     from talos.channels.telegram_bot import TelegramChannel
     from talos.channels.web_api import build_api
+    from talos.connectors.browser import CDPBrowser
     from talos.db.engine import Database
     from talos.runtime.claude import ClaudeRuntime, sanitize_process_env
     from talos.scheduler.ticker import Ticker
@@ -57,7 +58,9 @@ async def amain() -> None:
     tg = TelegramChannel(settings.telegram_bot_token) if settings.telegram_bot_token else None
     if tg:
         channels["telegram"] = tg
-    app = build_services(settings, db, key, channels=channels, gmail=gmail, calendar=calendar, drive=drive)
+    browser = CDPBrowser(settings)  # liga-se ao Chromium só no primeiro uso (vault_fill, screenshot do cartão)
+    app = build_services(settings, db, key, channels=channels, gmail=gmail, calendar=calendar, drive=drive,
+                         browser=browser)
 
     runtime_holder: dict[str, Any] = {}
 
@@ -69,8 +72,10 @@ async def amain() -> None:
         authorized_keys=app.tasks.authorized_keys, classifier=HaikuClassifier(ask_model),
         classifier_enabled=settings.sentinel_classifier,
         on_decision=lambda call, d: app.bus.emit("sentinel_decision", d.as_event(call), task_id=call.task_id),
+        snapshot_dirs=[settings.data_dir / "screens"],  # --output-dir do Playwright MCP (snapshots das ações)
     )
     app.approvals.on_grant = sentinel.grant_once
+    browser.url_hint = lambda: sentinel.snapshots.page_url  # a aba em que o MCP está a trabalhar
     runtime = ClaudeRuntime(app, sentinel)
     runtime_holder["rt"] = runtime
     app.runtime = runtime
@@ -115,6 +120,8 @@ async def amain() -> None:
         await tg.stop()
     with contextlib.suppress(Exception):
         await asyncio.wait_for(asyncio.gather(workers, api_task, return_exceptions=True), timeout=20)
+    with contextlib.suppress(Exception):
+        await browser.close()  # só desliga a ligação CDP; o Chromium (talos-browser) continua
 
 
 def run() -> None:
