@@ -9,6 +9,8 @@ set -euo pipefail
 
 STAGE="${1:-}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Os comandos que rodam como `talos` herdam o diretório atual; /root é 0700 e o npm falha com EACCES.
+cd /
 PW_MCP_VERSION="0.0.83"
 NODE_MAJOR=22
 

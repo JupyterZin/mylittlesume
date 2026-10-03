@@ -3,6 +3,8 @@
 # Uso: sudo infra/scripts/deploy.sh [--no-restart]
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Os comandos que rodam como `talos` herdam o diretório atual; /root é 0700 e o npm falha com EACCES.
+cd /
 RESTART=1
 [[ "${1:-}" == "--no-restart" ]] && RESTART=0
 [[ $EUID -eq 0 ]] || { echo "Rode com sudo."; exit 1; }
