@@ -35,15 +35,26 @@ def start_flow(client_file: Path) -> tuple[Any, str]:
     return flow, url
 
 
-def finish_flow(flow: Any, pasted: str, vault: Vault) -> None:
-    pasted = pasted.strip()
+def finish_flow(flow: Any, pasted: str, vault: Vault) -> list[str]:
+    """Troca o código pelo token e grava-o no cofre. Devolve os escopos que o Lucas NÃO concedeu."""
+    import os
+
+    # Com o consentimento granular, o Google pode devolver menos escopos: não deixamos o oauthlib
+    # rebentar com "Scope has changed" — verificamos nós e dizemos o que faltou.
+    os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+    pasted = "".join(pasted.split())
     if pasted.startswith("http://"):
         pasted = pasted.replace("http://", "https://", 1)  # o oauthlib exige https; é só loopback
     if pasted.startswith("https://"):
         flow.fetch_token(authorization_response=pasted)
     else:
         flow.fetch_token(code=pasted)
+    granted = set(flow.oauth2session.token.get("scope") or [])
+    if isinstance(flow.oauth2session.token.get("scope"), str):
+        granted = set(flow.oauth2session.token["scope"].split())
+    missing = [sc for sc in SCOPES if granted and sc not in granted]
     vault.set(TOKEN_KEY, flow.credentials.to_json())
+    return missing
 
 
 def load_credentials(vault: Vault) -> Any:

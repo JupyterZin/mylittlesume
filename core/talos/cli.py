@@ -225,8 +225,16 @@ def google_auth() -> None:
     typer.echo("2. No fim, o navegador vai mostrar um erro (localhost). Está certo.")
     typer.echo("3. Copie o endereço COMPLETO da barra do navegador e cole aqui.\n")
     pasted = input("URL: ").strip()
-    finish_flow(flow, pasted, _vault())
-    typer.echo("✅ Google ligado. Rode `talos doctor` para confirmar.")
+    try:
+        missing = finish_flow(flow, pasted, _vault())
+    except Exception as e:
+        typer.echo(f"❌ Não consegui concluir: {e}\nRode `talos google-auth` de novo (o link vale poucos minutos).")
+        raise typer.Exit(1) from None
+    if missing:
+        names = ", ".join(m.rsplit("/", 1)[-1] for m in missing)
+        typer.echo(f"⚠️ Ligado, mas faltaram permissões: {names}. Rode de novo e marque todas as caixas.")
+        raise typer.Exit(1)
+    typer.echo("✅ Google ligado. Agora: systemctl restart talos-core && talos doctor")
 
 
 @app.command()

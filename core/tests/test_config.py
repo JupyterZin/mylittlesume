@@ -121,3 +121,31 @@ def test_google_client_from_id_and_secret(tmp_path, monkeypatch):
     assert r.exit_code == 0, r.output
     inst = json.loads(dest.read_text())["installed"]
     assert inst["client_secret"] == "GOCSPX-abc123" and inst["token_uri"].startswith("https://oauth2")
+
+
+def test_finish_flow_reports_missing_scopes(db):
+    from cryptography.fernet import Fernet
+
+    from talos.connectors.google_auth import SCOPES, finish_flow
+    from talos.vault.store import Vault
+
+    class Sess:
+        token = {"scope": [SCOPES[0], SCOPES[1]]}
+
+    class Creds:
+        def to_json(self):
+            return '{"token": "x"}'
+
+    class Flow:
+        oauth2session = Sess()
+        credentials = Creds()
+        got = None
+
+        def fetch_token(self, **kw):
+            Flow.got = kw
+
+    v = Vault(db, Fernet.generate_key())
+    missing = finish_flow(Flow(), "http://localhost:8765/?state=s&code=4/abc def", v)
+    assert Flow.got["authorization_response"].startswith("https://localhost:8765/") and " " not in Flow.got[
+        "authorization_response"]
+    assert missing == [SCOPES[2]] and v.get("google.token") == '{"token": "x"}'
