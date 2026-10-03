@@ -60,7 +60,8 @@ Legenda: ✅ feito e verificado · ⏳ aguarda o servidor/Lucas · ⬜ por fazer
 
 ### Instalação na VPS (Hostinger KVM 2, Ubuntu 24.04)
 - ✅ `bootstrap.sh base` testado num contêiner Ubuntu 24.04 (usuário, diretórios, venv, cofre, migrações, doctor); corrigidos: comentários inline no `.env` (systemd), chave do cofre criada como root, `PrivateTmp` que escondia o Xvfb da Tela, AppArmor para o sandbox do Chromium, `cd /` (npx como `talos` falhava com EACCES em `/root`).
-- ⏳ Lucas a correr o passo 2 na VPS.
+- ✅ **F0 no servidor (VPS Hostinger KVM 2, Ubuntu 24.04)**: `bootstrap base` ok; Tailscale (`talos` 100.91.139.79) com acesso SSH pela tailnet testado no celular (Termius); UFW `deny incoming` + só `tailscale0`; `talos doctor`: Claude Code v2.1.286 responde "OK" pela assinatura (credencial `none`, sem API key), navegador CDP, Tela noVNC e Jev ✅.
+- ⏳ Telegram (BotFather), Google (OAuth), `tailscale serve` para o app, cofre (`dados.*`).
 
 ### Próximas
 - ⬜ F6: objetivos, `config/mcp.yaml`. ⬜ F7: endurecimento.
