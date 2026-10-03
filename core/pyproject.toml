@@ -23,6 +23,7 @@ dependencies = [
   "python-dateutil>=2.9",
   "typer>=0.27",
   "playwright>=1.55",                # só a ligação CDP ao Chromium do talos-browser; sem download de navegador
+  "pywebpush>=2.5.0",                # Web Push (VAPID) para as notificações do app
 ]
 
 [project.scripts]
