@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 log = get_logger("talos.gateway")
 
 EDIT_STATE = "edit_pending"
-HELP = ("Comandos: /tarefas · /aprovacoes · /agenda · /pausar · /retomar · /uso · /tela · /cancelar <id>")
+HELP = ("Comandos: /tarefas · /aprovacoes · /agenda · /pausar · /retomar · /uso · /tela · /cancelar <id> · "
+        "/organizar · /desfazer_organizacao")
 
 
 class Gateway:
@@ -181,3 +182,16 @@ class Gateway:
                 self.app.approvals._transition(a.id, ("pending",), "rejected", decided_at=utcnow(),
                                                decided_via=channel, decision_note="tarefa cancelada")
         return f"Tarefa #{tid} cancelada (vigilâncias e propostas pendentes também)."
+
+    async def cmd_organizar(self, channel: str, chat_id: str, args: list[str]) -> str:
+        if self.app.gmail is None:
+            return "O Gmail ainda não está ligado."
+        self.app.queue.enqueue("gmail.organize", {}, dedupe_key="gmail.organize")
+        return "Vou rever a caixa de entrada e mando-lhe o plano para aprovar."
+
+    async def cmd_desfazer_organizacao(self, channel: str, chat_id: str, args: list[str]) -> str:
+        from talos.monitor.organizer import undo_last
+
+        if self.app.gmail is None:
+            return "O Gmail ainda não está ligado."
+        return await undo_last(self.app)

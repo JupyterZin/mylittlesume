@@ -275,17 +275,19 @@ class GmailMonitor:
 
 
 def seed_schedules(app: Services) -> None:
-    """Briefing 08:30 e reflexão 23:00 (Lisboa), criados uma vez."""
+    """Briefing 08:30, reflexão 23:00 e organização do Gmail às segundas 09:00 (Lisboa), criados uma vez."""
     tz = app.settings.timezone
-    wanted = {"briefing": app.settings.briefing_time, "reflection": app.settings.reflection_time}
+    rules = {}
+    for kind, hhmm in (("briefing", app.settings.briefing_time), ("reflection", app.settings.reflection_time)):
+        h, m = hhmm.split(":")
+        rules[kind] = f"FREQ=DAILY;BYHOUR={int(h)};BYMINUTE={int(m)};BYSECOND=0"
+    h, m = app.settings.organize_time.split(":")
+    rules["gmail_organize"] = f"FREQ=WEEKLY;BYDAY=MO;BYHOUR={int(h)};BYMINUTE={int(m)};BYSECOND=0"
     with app.db.session() as s:
         existing = {sc.kind for sc in s.exec(select(Schedule))}
-        for kind, hhmm in wanted.items():
-            if kind in existing:
-                continue
-            h, m = hhmm.split(":")
-            rule = f"FREQ=DAILY;BYHOUR={int(h)};BYMINUTE={int(m)};BYSECOND=0"
-            s.add(Schedule(kind=kind, rrule=rule, prompt=kind, next_run_at=next_occurrence(rule, tz)))
+        for kind, rule in rules.items():
+            if kind not in existing:
+                s.add(Schedule(kind=kind, rrule=rule, prompt=kind, next_run_at=next_occurrence(rule, tz)))
         s.commit()
 
 
@@ -295,6 +297,11 @@ def install(app: Services, orch: Orchestrator) -> list[tuple[Any, int]]:
     orch.register("agent.inbox", mon.handle_inbox)
     orch.register("agent.briefing", mon.handle_briefing)
     orch.register("agent.reflection", mon.handle_reflection)
+    from talos.monitor.organizer import InboxOrganizer
+
+    org = InboxOrganizer(app)
+    orch.register("gmail.organize", org.handle_job)
     seed_schedules(app)
     app.extra["monitor"] = mon
+    app.extra["organizer"] = org
     return [(mon.tick, app.settings.monitor_interval_seconds), (mon.health, 300)]

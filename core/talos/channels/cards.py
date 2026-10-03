@@ -17,6 +17,7 @@ VERB = {
     "booking": ("fazer reserva", "Aprovar e reservar"),
     "share_data": ("partilhar dados pessoais", "Aprovar e partilhar"),
     "delete": ("apagar", "Aprovar e apagar"),
+    "email.organize": ("organizar a caixa de entrada (rótulos e arquivo; nada é apagado)", "Aprovar e organizar"),
 }
 RISK = {"baixo": "baixo", "medio": "médio", "alto": "alto"}
 RECIPIENT_NOTE = {

@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 
 log = get_logger("talos.telegram")
 
-COMMANDS = ["start", "tarefas", "aprovacoes", "agenda", "pausar", "retomar", "uso", "tela", "cancelar"]
+COMMANDS = ["start", "tarefas", "aprovacoes", "agenda", "pausar", "retomar", "uso", "tela", "cancelar",
+            "organizar", "desfazer_organizacao"]
 
 
 class TelegramChannel:

@@ -42,7 +42,8 @@ class Ticker:
             due = list(s.exec(select(Schedule).where(Schedule.enabled == True,  # noqa: E712
                                                      col(Schedule.next_run_at) <= now)))
             for sc in due:
-                kind = {"briefing": "agent.briefing", "reflection": "agent.reflection"}.get(sc.kind, "agent.schedule")
+                kind = {"briefing": "agent.briefing", "reflection": "agent.reflection",
+                        "gmail_organize": "gmail.organize"}.get(sc.kind, "agent.schedule")
                 self.app.queue.enqueue(kind, {"schedule_id": sc.id, "prompt": sc.prompt, "title": sc.kind},
                                        dedupe_key=f"sched:{sc.id}:{sc.next_run_at.isoformat()}")
                 sc.next_run_at = next_occurrence(sc.rrule, self.app.settings.timezone, after=now)

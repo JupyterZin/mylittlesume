@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     monitor_interval_seconds: int = 180
     briefing_time: str = "08:30"
     reflection_time: str = "23:00"
+    organize_time: str = "09:00"  # segundas-feiras
 
     @field_validator("sentinel_classifier", mode="before")
     @classmethod

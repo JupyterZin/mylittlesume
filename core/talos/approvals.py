@@ -89,6 +89,8 @@ class Approvals:
                 risk, why = "alto", why + ["convidado novo"]
             else:
                 risk = "medio"
+        elif kind == "email.organize":
+            risk = "baixo"  # só rótulos e arquivo, reversível com /desfazer_organizacao
         else:
             risk = "medio" if kind in SYNC_KINDS else "alto"
 

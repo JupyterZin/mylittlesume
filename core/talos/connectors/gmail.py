@@ -25,6 +25,11 @@ class GmailAPI(Protocol):
     def history(self, start_history_id: str) -> tuple[list[dict[str, Any]], str]: ...
     def ensure_label(self, name: str) -> str: ...
     def modify(self, msg_id: str, add: list[str] | None = None, remove: list[str] | None = None) -> None: ...
+    def list_messages(self, query: str, max_results: int = 300) -> list[dict[str, Any]]: ...
+    def batch_modify(self, ids: list[str], add: list[str] | None = None, remove: list[str] | None = None) -> None: ...
+
+
+META_HEADERS = ["From", "Subject", "Date", "List-Unsubscribe"]
 
 
 def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
@@ -42,6 +47,7 @@ def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
         "message_id": h.get("message-id", ""),
         "references": h.get("references", ""),
         "auto_submitted": h.get("auto-submitted", ""),
+        "list_unsubscribe": h.get("list-unsubscribe", ""),
         "snippet": m.get("snippet", ""),
         "body": text_from_payload(m.get("payload") or {}),
     }
@@ -134,3 +140,23 @@ class GoogleGmail:
     def modify(self, msg_id: str, add: list[str] | None = None, remove: list[str] | None = None) -> None:
         self.svc.users().messages().modify(userId="me", id=msg_id, body={
             "addLabelIds": add or [], "removeLabelIds": remove or []}).execute()
+
+    def list_messages(self, query: str, max_results: int = 300) -> list[dict[str, Any]]:
+        """Metadados (sem corpo) das mensagens que casam com a pesquisa — para organizar a caixa."""
+        ids: list[str] = []
+        req = self.svc.users().messages().list(userId="me", q=query, maxResults=min(max_results, 500))
+        while req is not None and len(ids) < max_results:
+            resp = req.execute()
+            ids += [m["id"] for m in resp.get("messages", [])]
+            req = self.svc.users().messages().list_next(req, resp)
+        out = []
+        for mid in ids[:max_results]:
+            m = self.svc.users().messages().get(userId="me", id=mid, format="metadata",
+                                                metadataHeaders=META_HEADERS).execute()
+            out.append(normalize_message(m))
+        return out
+
+    def batch_modify(self, ids: list[str], add: list[str] | None = None, remove: list[str] | None = None) -> None:
+        for i in range(0, len(ids), 1000):
+            self.svc.users().messages().batchModify(userId="me", body={
+                "ids": ids[i:i + 1000], "addLabelIds": add or [], "removeLabelIds": remove or []}).execute()

@@ -108,7 +108,7 @@ async def test_briefing_schedule_and_max_lines(h):
     seed_schedules(h.app)  # idempotente
     with h.app.db.session() as s:
         kinds = sorted(sc.kind for sc in s.exec(select(Schedule)))
-    assert kinds == ["briefing", "reflection"]
+    assert kinds == ["briefing", "gmail_organize", "reflection"]
     mon = GmailMonitor(h.app, h.orch)
     h.orch.register("agent.briefing", mon.handle_briefing)
     h.rt.on(lambda r: r.task_id is not None and "briefing-diario" in r.prompt,

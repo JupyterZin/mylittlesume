@@ -49,6 +49,7 @@ class Executor:
         self.notifier = notifier
         self.gmail = gmail
         self.calendar = calendar
+        self._app: Any = None  # Services, ligado em build_services (o organizador precisa do sistema completo)
 
     async def run(self, action_id: int) -> dict[str, Any]:
         if self.control.is_paused():
@@ -63,6 +64,12 @@ class Executor:
                 result = await self._send_email(action)
             elif action.kind == "calendar.invite":
                 result = await self._calendar_invite(action)
+            elif action.kind == "email.organize":
+                from talos.monitor.organizer import execute_organize
+
+                if self.gmail is None:
+                    raise RuntimeError("Gmail não configurado")
+                result = await execute_organize(self._app, action)
             else:
                 raise NotImplementedError(f"execução de {action.kind} ainda não implementada (fase 4)")
         except Exception as e:
@@ -203,4 +210,7 @@ class Executor:
             return f"✅ Email enviado para {', '.join(result.get('to', []))}: «{result.get('subject', '')}»{extra}"
         if action.kind == "calendar.invite":
             return f"✅ Convite enviado para {', '.join(result.get('attendees', []))}"
+        if action.kind == "email.organize":
+            return (f"✅ Caixa organizada: {result.get('labeled', 0)} rotulados, {result.get('archived', 0)} "
+                    "arquivados. /desfazer_organizacao devolve os arquivados à caixa.")
         return f"✅ Proposta #{action.id} executada"

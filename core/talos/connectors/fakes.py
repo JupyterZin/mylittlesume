@@ -40,12 +40,12 @@ class FakeGmail:
 
     def deliver(self, *, sender: str, subject: str, body: str, to: str | None = None,
                 thread_id: str | None = None, in_reply_to: str | None = None,
-                headers: dict[str, str] | None = None) -> dict[str, Any]:
+                headers: dict[str, str] | None = None, labels: list[str] | None = None) -> dict[str, Any]:
         msg = build_message(sender=sender, to=[to or self.address], subject=subject, body=body,
                             message_id=f"<{self._new_id('ext')}@externo.example>", in_reply_to=in_reply_to)
         for k, v in (headers or {}).items():
             msg[k] = v
-        return self._store(msg, thread_id, ["INBOX", "UNREAD"])
+        return self._store(msg, thread_id, ["INBOX", "UNREAD", *(labels or [])])
 
     def expire_history(self) -> None:
         self.expired_before = int(self.history_id) + 1
@@ -63,6 +63,7 @@ class FakeGmail:
             "reply_to": m.get("Reply-To", ""), "subject": m.get("Subject", ""), "date": m.get("Date", ""),
             "message_id": m.get("Message-ID", ""), "references": m.get("References", ""),
             "auto_submitted": m.get("Auto-Submitted", ""),
+            "list_unsubscribe": m.get("List-Unsubscribe", ""),
             "snippet": (body.get_content() if body else "")[:120],
             "body": body.get_content() if body else "",
         }
@@ -135,6 +136,21 @@ class FakeGmail:
         rec = self.messages[msg_id]
         labels = [lab for lab in rec["labelIds"] if lab not in (remove or [])]
         rec["labelIds"] = labels + [lab for lab in (add or []) if lab not in labels]
+
+    def list_messages(self, query: str, max_results: int = 300) -> list[dict[str, Any]]:
+        want_inbox = "in:inbox" in query
+        out = []
+        for rec in self.messages.values():
+            if want_inbox and "INBOX" not in rec["labelIds"]:
+                continue
+            if "-is:starred" in query and "STARRED" in rec["labelIds"]:
+                continue
+            out.append(self._norm(rec))
+        return out[:max_results]
+
+    def batch_modify(self, ids: list[str], add: list[str] | None = None, remove: list[str] | None = None) -> None:
+        for mid in ids:
+            self.modify(mid, add, remove)
 
     # conveniência para asserts
     def sent_to(self, address: str) -> list[dict[str, Any]]:

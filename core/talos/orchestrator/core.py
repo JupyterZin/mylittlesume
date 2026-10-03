@@ -24,7 +24,7 @@ log = get_logger("talos.orchestrator")
 
 AGENT_KINDS = ("agent.main_turn", "agent.task_run", "agent.triage", "agent.schedule", "agent.inbox",
                "agent.briefing", "agent.reflection")
-OTHER_KINDS = ("executor.run", "notify.send", "approval.card")
+OTHER_KINDS = ("executor.run", "notify.send", "approval.card", "gmail.organize")
 BACKGROUND_AGENT_KINDS = ("agent.task_run", "agent.triage", "agent.schedule", "agent.inbox", "agent.reflection")
 
 

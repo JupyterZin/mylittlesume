@@ -85,3 +85,7 @@ Formato: **contexto → decisão → consequência**. Divergências entre o SPEC
 
 ## ADR-018 · Plano Pro
 - **Decisão:** `CLAUDE_PLAN=pro` → planejamento com Sonnet (Opus é escasso no Pro), teto diário padrão de 30 execuções, concorrência 1; `max5`/`max20` reativam o Opus e sobem o teto (60/150).
+
+## ADR-019 · Organização semanal do Gmail (pedido do Lucas)
+- **Decisão:** recorrência `gmail_organize` às segundas 09:00 (Lisboa) → job determinístico `gmail.organize`: lista `in:inbox -is:starred older_than:2d` (até 300), classifica com sinais do Gmail (`CATEGORY_*`, `List-Unsubscribe`) + Jev (categoria, precisa de resposta, importância), e propõe um `email.organize` (risco baixo): rótulos `Talos/<Categoria>` em tudo e **arquivo** só de promoções/newsletters/notificações sem resposta pendente e de baixa importância. Executor usa `batchModify`; nunca apaga; `/desfazer_organizacao` devolve os arquivados à caixa. Também disponível a pedido (`/organizar`, ferramenta `gmail_organize`).
+- **Consequência:** zero uso da assinatura do Claude na organização (só Jev); sem Jev, só arquiva o que o próprio Gmail já classificou como promoções/atualizações/fóruns.

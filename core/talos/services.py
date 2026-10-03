@@ -65,7 +65,9 @@ def build_services(settings: Settings, db: Database, vault_key: bytes, *,
                           vault=vault, control=control, gmail=gmail, notifier=notifier)
     executor = Executor(settings=settings, db=db, bus=bus, queue=queue, vault=vault, approvals=approvals,
                         tasks=tasks, control=control, notifier=notifier, gmail=gmail, calendar=calendar)
-    return Services(settings=settings, db=db, bus=bus, queue=queue, control=control, vault=vault, tasks=tasks,
+    services = Services(settings=settings, db=db, bus=bus, queue=queue, control=control, vault=vault, tasks=tasks,
                     memory=memory, contacts=contacts, approvals=approvals, executor=executor, notifier=notifier,
                     channels=channels, gmail=gmail, calendar=calendar, drive=drive, browser=browser,
                     system1=system1 or System1(None))
+    executor._app = services
+    return services

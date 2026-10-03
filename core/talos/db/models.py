@@ -73,7 +73,7 @@ class TaskEvent(SQLModel, table=True):
 
 ACTION_KINDS = (
     "email.send", "email.reply", "calendar.invite", "browser.submit",
-    "purchase", "booking", "share_data", "delete",
+    "purchase", "booking", "share_data", "delete", "email.organize",
 )
 ACTION_STATUSES = (
     "pending", "approved", "executing", "rejected", "superseded", "expired", "executed", "failed",

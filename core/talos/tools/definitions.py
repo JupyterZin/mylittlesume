@@ -178,6 +178,14 @@ async def gmail_label(ctx: ToolContext, a: dict[str, Any]) -> Any:
     return f"Rótulo {name} aplicado."
 
 
+@talos_tool("gmail_organize", "Prepara a organização da caixa de entrada (rótulos Talos/* e arquivo de "
+            "promoções/newsletters/notificações). Não mexe em nada: manda um cartão para o Lucas aprovar.", {})
+async def gmail_organize(ctx: ToolContext, a: dict[str, Any]) -> Any:
+    _need(ctx.app.gmail, "Gmail")
+    ctx.app.queue.enqueue("gmail.organize", {}, dedupe_key="gmail.organize")
+    return "Organização em preparação; o Lucas recebe o plano num cartão de aprovação."
+
+
 # =============================== Calendar ===============================
 def _parse_local(s: str, tz: str) -> datetime:
     from zoneinfo import ZoneInfo
