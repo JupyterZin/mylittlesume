@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import re
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from talos.logging import get_logger
 from talos.sentinel.policy import Decision, Sentinel, ToolCall
@@ -67,15 +68,16 @@ class ToolGate:
         data_keys = sorted({h.key for h in d.egress_hits if h.key})
         if name == "mcp__talos__vault_fill" and str(inp.get("key", "")).startswith("dados."):
             data_keys = sorted(set(data_keys) | {inp["key"]})
-        screenshot = None
-        if name.startswith("mcp__playwright__") and self.app.browser is not None:
+        screenshot, page_url = None, ""
+        if (name.startswith("mcp__playwright__") or name == "mcp__talos__vault_fill") and self.app.browser is not None:
             try:
                 screenshot = await self.app.browser.screenshot()
+                page_url = await self.app.browser.current_url()
             except Exception as e:
                 log.warning("screenshot_failed", error=str(e))
-        summary = self._summary(name, inp, d)
+        summary = self._summary(name, inp, d) + (f"\nPágina: {page_url}" if page_url else "")
         payload = {"summary": summary, "tool": name, "input": _redact_input(inp), "_fingerprint": call.fingerprint(),
-                   "_data_keys": data_keys, "screenshot": screenshot}
+                   "_data_keys": data_keys, "screenshot": screenshot, "_host": urlparse(page_url).hostname or ""}
         try:
             action = self.app.approvals.create(task_id=self.req.task_id, kind=kind, payload=payload,
                                                preview=summary, reason=d.reason)

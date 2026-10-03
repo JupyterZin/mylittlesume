@@ -48,6 +48,12 @@ CASES = [
     (PW + "browser_press_key", {"key": "ArrowDown"}, "allow"),
     (PW + "browser_evaluate", {"function": "() => document.forms[0].submit()"}, "deny"),
     (PW + "browser_snapshot", {}, "allow"),
+    (PW + "browser_type", {"element": "Código postal", "target": "e2", "text": "1200-195"}, "ask"),  # egress, não takeover
+    (PW + "browser_fill_form", {"fields": [{"name": "Postal code", "type": "textbox", "target": "e2", "value": "x"}]},
+     "allow"),
+    (PW + "browser_type", {"element": "Chave de acesso", "target": "e5", "text": "x"}, "takeover"),
+    (PW + "browser_handle_dialog", {"accept": True}, "ask"),
+    (PW + "browser_handle_dialog", {"accept": False}, "allow"),
     ("SomethingElse", {}, "deny"),  # fora da allowlist
 ]
 

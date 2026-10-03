@@ -422,6 +422,7 @@ async def vault_fill(ctx: ToolContext, a: dict[str, Any]) -> Any:
     value = ctx.app.vault.get(a["key"])
     if value is None:
         raise ToolError(f"{a['key']} não existe no cofre")
+    await _check_same_site(ctx, browser, a["key"])
     try:
         where = await browser.fill(a["selector"], value)
     except BrowserError as e:  # mensagem já sem o valor
@@ -429,6 +430,28 @@ async def vault_fill(ctx: ToolContext, a: dict[str, Any]) -> Any:
     if ctx.task_id:
         ctx.app.tasks.authorize_data(ctx.task_id, [a["key"]])
     return f"Campo {where} preenchido com {a['key']}."
+
+
+async def _check_same_site(ctx: ToolContext, browser: Any, key: str) -> None:
+    """Aprovação dada para um site não vale noutro (ex.: aprovação tardia depois de a página mudar)."""
+    from urllib.parse import urlparse
+
+    with ctx.app.db.session() as s:
+        rows = list(s.exec(select(PendingAction).where(PendingAction.task_id == ctx.task_id,
+                                                       PendingAction.kind == "share_data",
+                                                       col(PendingAction.status).in_(("approved", "executed")))
+                           .order_by(col(PendingAction.id).desc()).limit(5)))
+    approved = next((r for r in rows if (r.payload_json or {}).get("tool") == "mcp__talos__vault_fill"
+                     and (r.payload_json.get("input") or {}).get("key") == key), None)
+    host = (approved.payload_json.get("_host") if approved else "") or ""
+    if not host:
+        return
+    try:
+        now = urlparse(await browser.current_url()).hostname or ""
+    except Exception:
+        now = ""
+    if now and now != host:
+        raise ToolError(f"a aprovação foi para {host}, mas a página agora é {now}; peça uma nova aprovação")
 
 
 # --------------------------------------------------------------------------------------------

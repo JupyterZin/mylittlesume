@@ -393,8 +393,9 @@ async def test_form_until_submit_card_with_screenshot_then_submit(h: Any, cdp: C
     shot = Path(click_action.payload_json["screenshot"])
     assert shot.parent == tmp_settings.data_dir / "screens" and shot.read_bytes()[:4] == b"\x89PNG"
     photos = [m for m in h.tg.sent if m["type"] == "photo"]
-    assert [p["path"] for p in photos] == [str(shot)]
-    assert photos[0]["caption"] == f"Proposta #{click_action.id}"
+    # o cartão do clique final leva o screenshot (o do vault_fill também leva o seu)
+    assert [p["path"] for p in photos][-1] == str(shot) and len(photos) == 2
+    assert [p["caption"] for p in photos] == [f"Proposta #{fill_action.id}", f"Proposta #{click_action.id}"]
 
 
 async def test_password_and_card_are_takeover_never_typed(h: Any, cdp: CDPBrowser, driver: Page) -> None:

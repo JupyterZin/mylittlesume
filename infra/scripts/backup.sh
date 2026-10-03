@@ -20,3 +20,6 @@ echo "$OUT/talos-$STAMP.tar.gz"
 if [[ -n "${AGE_RECIPIENT:-}" && "$(date +%u)" == "7" ]]; then
   age -r "$AGE_RECIPIENT" -o "$OUT/talos-$STAMP.tar.gz.age" "$OUT/talos-$STAMP.tar.gz"
 fi
+
+# screenshots dos cartões e snapshots do Playwright MCP: só 7 dias
+find "$DATA/screens" -type f -mtime +7 -delete 2>/dev/null || true

@@ -71,7 +71,7 @@ rules:
   - id: browser-secret-fields
     match:
       tool_in: ["mcp__playwright__browser_type", "mcp__playwright__browser_fill_form", "mcp__playwright__browser_select_option"]
-      field_regex: "(senha|password|passwd|passe|pin\\b|cvv|cvc|cart[aã]o|card|iban|c[oó]digo|code|otp|2fa|token|mb ?way)"
+      field_regex: "(senha|password|passwd|passe|chave de acesso|pin\\b|cvv|cvc|cart[aã]o|card|iban|c[oó]digo(?!\\s*postal)|(?<!postal )code|otp|2fa|token|mb ?way)"
     decision: takeover
     reason: "campo de senha, código ou cartão: só o Lucas digita (takeover)"
   - id: browser-no-description
@@ -107,6 +107,10 @@ rules:
     match: { tool_in: ["mcp__playwright__browser_file_upload", "mcp__playwright__browser_drop"] }
     decision: ask
     reason: "enviar ficheiro ou dados para um site (upload ou arrastar e largar)"
+  - id: browser-dialog-accept
+    match: { tool: "mcp__playwright__browser_handle_dialog", input_flag: { accept: true } }
+    decision: ask
+    reason: "aceitar um diálogo do site pode confirmar uma ação"
   - id: browser-other
     match: { tool_prefix: "mcp__playwright__browser_" }
     decision: allow

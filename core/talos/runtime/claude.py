@@ -92,7 +92,8 @@ class ClaudeRuntime:
         out = self.s.data_dir / "screens"
         return {"type": "stdio", "command": "npx",
                 "args": ["-y", PLAYWRIGHT_MCP, "--cdp-endpoint", self.s.browser_cdp_endpoint,
-                         "--output-dir", str(out), "--image-responses", "omit"]}
+                         "--output-dir", str(out), "--image-responses", "omit",
+                         "--no-webmcp"]}  # páginas não podem registar ferramentas próprias
 
     def _system_append(self, req: RunRequest) -> str:
         from talos.clock import to_local, utcnow
