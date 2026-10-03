@@ -508,7 +508,10 @@ def build_api(app: Services, gateway: Gateway, *, static_dir: Path | None | bool
         p = push_sender()
         if p.count() == 0:
             raise HTTPException(409, "Nenhum aparelho inscrito. Ligue as notificações primeiro.")
-        res = await p.send(ping_message())  # pedido explícito: ignora NOTIFY_CHANNELS e horas de silêncio
+        try:
+            res = await p.send(ping_message())  # pedido explícito: ignora NOTIFY_CHANNELS e horas de silêncio
+        except RuntimeError as e:  # chave VAPID ilegível no cofre
+            raise HTTPException(500, str(e)) from e
         return {"ok": res.sent > 0, **res.as_dict()}
 
     # ------------------------------------------------------------ tempo real

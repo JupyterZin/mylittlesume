@@ -113,6 +113,14 @@ def test_card_message_is_a_summary(h: Harness) -> None:
     _no_secrets(p)
 
 
+def test_card_message_for_browser_submit_names_the_site(h: Harness) -> None:
+    a = h.app.approvals.create(task_id=None, kind="browser.submit", payload={
+        "summary": "Submeter o formulário de pedido", "_host": "empresa-exemplo.pt",
+        "input": {"element": "Enviar"}}, reason="formulário oficial")
+    assert card_message(a).payload()["body"] == (f"Proposta #{a.id} · submeter formulário em empresa-exemplo.pt"
+                                                 " — toque para ver")
+
+
 def test_notice_message_urgency_and_tags() -> None:
     assert notice_message("x").urgency == "normal"
     assert notice_message("x", urgent=True).urgency == "high"
@@ -127,7 +135,8 @@ def test_validate_subscription() -> None:
     validate_subscription(FCM + "abc", p256dh, auth)
     validate_subscription("https://updates.push.services.mozilla.com/wpush/v2/x", p256dh, auth)
     for bad in ("http://fcm.googleapis.com/x", "https://127.0.0.1/x", "https://evil.example/fcm.googleapis.com",
-                "https://fcm.googleapis.com.evil.example/x", "javascript:alert(1)", ""):
+                "https://fcm.googleapis.com.evil.example/x", "https://storage.googleapis.com/b/x",
+                "javascript:alert(1)", ""):
         with pytest.raises(PushError):
             validate_subscription(bad, p256dh, auth)
     with pytest.raises(PushError):

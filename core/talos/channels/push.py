@@ -49,7 +49,8 @@ REQUEST_TIMEOUT = 10  # segundos por POST ao serviço de push
 MAX_FAILURES = 25  # falhas seguidas (sem 404/410) antes de desistir da inscrição
 MAX_SUBSCRIPTIONS = 10  # aparelhos; acima disto sai o mais antigo
 # Só serviços de push conhecidos (o servidor faz POST para o endpoint: nada de URLs arbitrárias).
-PUSH_HOST_SUFFIXES = ("googleapis.com", "push.services.mozilla.com", "notify.windows.com", "push.apple.com")
+# FCM (Chrome/Android), Mozilla autopush, WNS (Edge) e Apple; o host tem de ser um destes ou subdomínio.
+PUSH_HOST_SUFFIXES = ("fcm.googleapis.com", "push.services.mozilla.com", "notify.windows.com", "push.apple.com")
 
 TTL_NOTICE = 6 * 3600
 TTL_CARD = 12 * 3600
@@ -130,7 +131,7 @@ def card_message(action: PendingAction, task_title: str = "") -> PushMessage:
     target = ""
     if recips:
         target = f" para {recips[0]}" + (f" +{len(recips) - 1}" if len(recips) > 1 else "")
-    elif isinstance(p.get("url"), str) and (host := urlparse(p["url"]).hostname):
+    elif host := p.get("_host") or (urlparse(p["url"]).hostname if isinstance(p.get("url"), str) else None):
         target = f" em {host}"
     title = "Aprovação necessária" + (f" · {task_title}" if task_title else "")
     body = f"Proposta #{action.id} · {what}{target} — toque para ver"
