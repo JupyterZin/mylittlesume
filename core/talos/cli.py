@@ -173,6 +173,37 @@ def secrets_set(key: str, file: str = typer.Option(SECRETS_FILE, help="Ficheiro 
     typer.echo(f"✅ {key} gravado ({shown}). Reinicie o core para aplicar: systemctl restart talos-core")
 
 
+@secrets_app.command("google-client")
+def secrets_google_client(file: str = typer.Option("/etc/talos/google_client.json", help="Destino")) -> None:
+    """Grava o JSON do cliente OAuth (Desktop) colado no terminal — sem precisar de SFTP."""
+    import json
+    import os
+    from pathlib import Path
+
+    typer.echo("Cole o conteúdo INTEIRO do ficheiro JSON do Google (uma linha) e Enter:")
+    raw = input().strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        typer.echo("Isto não é um JSON válido. Copie o ficheiro inteiro, do { ao }.")
+        raise typer.Exit(1) from None
+    if "installed" not in data:
+        typer.echo("Este cliente não é do tipo 'App para computador' (Desktop). Crie um cliente Desktop.")
+        raise typer.Exit(1)
+    p = Path(file)
+    p.write_text(json.dumps(data))
+    os.chmod(p, 0o600)
+    if os.geteuid() == 0:
+        import pwd
+
+        try:
+            pw = pwd.getpwnam("talos")
+            os.chown(p, pw.pw_uid, pw.pw_gid)
+        except KeyError:
+            pass
+    typer.echo(f"✅ Cliente OAuth gravado em {p}. Agora: talos google-auth")
+
+
 @app.command("google-auth")
 def google_auth() -> None:
     """Liga a conta Google (Gmail, Calendar, Drive) sem navegador no servidor."""

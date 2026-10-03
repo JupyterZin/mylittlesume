@@ -89,3 +89,19 @@ def test_token_cleanup_and_validation():
     assert token_problem("CLAUDE_CODE_OAUTH_TOKEN", "ckSrsEpfg") is not None  # só a cauda do token
     assert token_problem("TYPESAFE_API_KEY", "apikey_123") is None
     assert token_problem("TELEGRAM_BOT_TOKEN", "abc") is not None
+
+
+def test_google_client_paste(tmp_path, monkeypatch):
+    import json
+
+    from typer.testing import CliRunner
+
+    from talos.cli import app
+
+    dest = tmp_path / "gc.json"
+    good = json.dumps({"installed": {"client_id": "x.apps.googleusercontent.com", "client_secret": "s"}})
+    r = CliRunner().invoke(app, ["secrets", "google-client", "--file", str(dest)], input=good + "\n")
+    assert r.exit_code == 0 and json.loads(dest.read_text())["installed"]["client_id"].startswith("x.")
+    r = CliRunner().invoke(app, ["secrets", "google-client", "--file", str(dest)],
+                           input=json.dumps({"web": {}}) + "\n")
+    assert r.exit_code == 1 and "Desktop" in r.output
