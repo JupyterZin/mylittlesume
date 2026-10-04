@@ -6,6 +6,39 @@
 > - **Diário** só cresce (append-only);
 > - nunca há segredos nem dados pessoais (email, telefone, NIF…) neste ficheiro.
 
+## 0. ⚠️ Trabalho a meio (2026-10-04) — ler primeiro
+
+**Limpeza dos testes** (pedido do Lucas). O briefing de 04/10 chegou, mas ainda trata os testes como assunto real: a thread do gás natural e o email para a esposa ("Indo dormir").
+
+**Onde os testes ficam no contexto:**
+- tarefas (`task_list` lista todos os estados);
+- vigilâncias ativas, que gerariam follow-ups;
+- as últimas 12 mensagens da conversa, que entram na rotação diária;
+- `memory_facts`, `contacts`, `workspace/memoria/`;
+- a **memória automática do Claude Code** (`$HOME/.claude/projects/*/memory`, ativa por omissão no CLI 2.1.286). Desliga-se com `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`.
+
+**Já escrito no working tree, NÃO commitado:**
+- `core/talos/maintenance.py`: plano, cópia do banco, arquivar, cancelar, apagar fatos e contatos, mover ficheiros de memória para `data_dir/arquivo/`, `context_floor` em `system_state["context"]`;
+- status `archived` em `TASK_STATUSES`;
+- `tasks.list()` exclui `archived`;
+- `_task_run` e `task_continue` ignoram `archived`;
+- `_rotation_context` filtra pelo `context_floor`;
+- o briefing não conta respostas de tarefas canceladas ou arquivadas;
+- `sanitize_process_env` liga `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`.
+
+**Falta:**
+1. Imports:
+   - `from talos.maintenance import context_floor` em `orchestrator/core.py`;
+   - `Task` no import de `talos.db.models` em `monitor/gmail_watch.py`.
+
+   A edição foi bloqueada pelo classificador de permissões; o Lucas tem de autorizar.
+2. Comando CLI `talos limpar-testes [--antes] [--manter-fato ID] [--manter-contato ID] [--aplicar]`. Sem `--aplicar` só mostra o que faria.
+3. Testes `core/tests/test_maintenance.py`.
+4. RUNBOOK e ADR-023 (auto-memória desligada + limpeza).
+5. Passos para o Lucas: `talos limpar-testes` → rever a lista → `--aplicar` → `sudo systemctl restart talos-core`.
+
+**Paliativo sem código:** no Telegram, `/tarefas` e depois `/cancelar N` em cada tarefa de teste. Isso cancela as vigilâncias e as aprovações dessa tarefa.
+
 ## 1. Estado atual (atualizado em 2026-10-03)
 
 - **Fases:**
