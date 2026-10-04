@@ -276,8 +276,9 @@ async def task_continue(ctx: ToolContext, a: dict[str, Any]) -> Any:
     t = ctx.app.tasks.get(int(a["task_id"]))
     if t is None:
         raise ToolError(f"tarefa #{a['task_id']} não existe (veja task_list)")
-    if t.status == "cancelled":
-        raise ToolError(f"a tarefa #{t.id} foi cancelada; crie uma nova com task_create")
+    if t.status in ("cancelled", "archived"):
+        raise ToolError(f"a tarefa #{t.id} foi {'cancelada' if t.status == 'cancelled' else 'arquivada'}; "
+                        "crie uma nova com task_create")
     ctx.app.tasks.update(t.id, status="running")
     ctx.app.queue.enqueue("agent.task_run", {"event": f"O Lucas pediu (pela conversa): {a['instruction']}"},
                           task_id=t.id)

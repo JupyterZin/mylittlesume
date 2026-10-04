@@ -17,25 +17,24 @@
 - `memory_facts`, `contacts`, `workspace/memoria/`;
 - a **memória automática do Claude Code** (`$HOME/.claude/projects/*/memory`, ativa por omissão no CLI 2.1.286). Desliga-se com `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`.
 
-**Já escrito no working tree, NÃO commitado:**
-- `core/talos/maintenance.py`: plano, cópia do banco, arquivar, cancelar, apagar fatos e contatos, mover ficheiros de memória para `data_dir/arquivo/`, `context_floor` em `system_state["context"]`;
+**Já commitado (testes verdes, seguro para o deploy):**
+- `core/talos/maintenance.py`: plano, cópia do banco, arquivar, cancelar, apagar fatos e contatos, mover ficheiros de memória para `data_dir/arquivo/`, `context_floor` em `system_state["context"]`. Ainda **não está ligado** a nada;
 - status `archived` em `TASK_STATUSES`;
 - `tasks.list()` exclui `archived`;
 - `_task_run` e `task_continue` ignoram `archived`;
-- `_rotation_context` filtra pelo `context_floor`;
-- o briefing não conta respostas de tarefas canceladas ou arquivadas;
 - `sanitize_process_env` liga `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`.
 
-**Falta:**
-1. Imports:
-   - `from talos.maintenance import context_floor` em `orchestrator/core.py`;
-   - `Task` no import de `talos.db.models` em `monitor/gmail_watch.py`.
-
-   A edição foi bloqueada pelo classificador de permissões; o Lucas tem de autorizar.
-2. Comando CLI `talos limpar-testes [--antes] [--manter-fato ID] [--manter-contato ID] [--aplicar]`. Sem `--aplicar` só mostra o que faria.
-3. Testes `core/tests/test_maintenance.py`.
-4. RUNBOOK e ADR-023 (auto-memória desligada + limpeza).
-5. Passos para o Lucas: `talos limpar-testes` → rever a lista → `--aplicar` → `sudo systemctl restart talos-core`.
+**Falta.** A edição que acrescentava os imports foi bloqueada pelo classificador de permissões, por isso as duas partes que dependiam deles foram desfeitas. O Lucas tem de autorizar antes de as refazer:
+1. Em `orchestrator/core.py`:
+   - `from talos.maintenance import context_floor`;
+   - em `_rotation_context`, filtrar `Message.created_at >= floor`.
+2. Em `monitor/gmail_watch.py`:
+   - importar `Task`;
+   - em `briefing_data`, `join(Task)` e excluir os estados `cancelled` e `archived`.
+3. Comando CLI `talos limpar-testes [--antes] [--manter-fato ID] [--manter-contato ID] [--aplicar]`. Sem `--aplicar` só mostra o que faria.
+4. Testes `core/tests/test_maintenance.py`.
+5. RUNBOOK e ADR-023 (auto-memória desligada + limpeza).
+6. Passos para o Lucas: `talos limpar-testes` → rever a lista → `--aplicar` → `sudo systemctl restart talos-core`.
 
 **Paliativo sem código:** no Telegram, `/tarefas` e depois `/cancelar N` em cada tarefa de teste. Isso cancela as vigilâncias e as aprovações dessa tarefa.
 

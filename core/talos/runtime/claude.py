@@ -39,6 +39,9 @@ def sanitize_process_env(auth_mode: str) -> None:
     """Remove do ambiente do processo o que mudaria a cobrança ou prenderia a sessão do CLI."""
     for k in ENV_DROP:
         os.environ.pop(k, None)
+    # a memória do Talos é a dele (memory_facts + workspace/memoria), revista pelo Lucas; a memória automática
+    # do Claude Code guardaria coisas fora desse controlo (e fora da limpeza de testes)
+    os.environ["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
     if auth_mode == "subscription":
         os.environ.pop("ANTHROPIC_API_KEY", None)
         os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)

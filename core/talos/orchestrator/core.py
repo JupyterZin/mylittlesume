@@ -359,7 +359,7 @@ class Orchestrator:
     async def _task_run(self, job: Job) -> None:
         task = self.app.tasks.get(job.task_id)
         event = job.payload_json.get("event")
-        if task is None or task.status == "cancelled":
+        if task is None or task.status in ("cancelled", "archived"):
             return
         if task.status in ("done", "failed") and not event:
             return

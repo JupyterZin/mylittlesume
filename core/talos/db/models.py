@@ -40,6 +40,7 @@ class Message(SQLModel, table=True):
 TASK_STATUSES = (
     "planning", "running", "waiting_approval", "waiting_external",
     "scheduled", "done", "failed", "cancelled",
+    "archived",  # fora do contexto (ex.: testes limpos com `talos limpar-testes`)
 )
 
 

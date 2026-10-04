@@ -67,11 +67,14 @@ class TaskService:
         t = self.get(task_id)
         return list(t.authorized_data_json or []) if t else []
 
-    def list(self, statuses: tuple[str, ...] | None = None, limit: int = 50) -> list[Task]:
+    def list(self, statuses: tuple[str, ...] | None = None, limit: int = 50,
+             include_archived: bool = False) -> list[Task]:
         with self.db.session() as s:
             q = select(Task).order_by(col(Task.updated_at).desc()).limit(limit)
             if statuses:
                 q = q.where(col(Task.status).in_(statuses))
+            elif not include_archived:
+                q = q.where(Task.status != "archived")
             return list(s.exec(q))
 
     def settle_after_run(self, task_id: int) -> Task:
